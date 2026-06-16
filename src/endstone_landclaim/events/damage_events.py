@@ -1,5 +1,4 @@
 from endstone import Player
-from endstone.actor import Actor
 from endstone.event import ActorDamageEvent
 from endstone_landclaim.services.protection_service import ProtectionService
 from endstone_landclaim.config import ConfigManager
@@ -14,35 +13,30 @@ class DamageEventHandler:
         victim = event.actor
         if not victim:
             return
+
         attacker = event.damage_source.damaging_actor if event.damage_source else None
         if not attacker:
             return
 
-        victim_x = int(victim.location.x)
-        victim_z = int(victim.location.z)
-        victim_dimension = self._get_dimension_key(victim)
-        attacker_x = int(attacker.location.x)
-        attacker_z = int(attacker.location.z)
-        attacker_dimension = self._get_dimension_key(attacker)
-        is_player_victim = isinstance(victim, Player)
-        is_op_attacker = isinstance(attacker, Player) and attacker.is_op
+        is_player_attacker = isinstance(attacker, Player)
+
         can_damage, reason = self.protection.can_damage_entity(
-            victim_x, victim_z,
-            attacker_uuid=str(attacker.unique_id) if isinstance(attacker, Player) else "",
-            attacker_name=attacker.name if isinstance(attacker, Player) else str(attacker.type),
-            is_player=is_player_victim,
-            dimension=victim_dimension,
-            is_op=is_op_attacker,
+            int(victim.location.x),
+            int(victim.location.z),
+            attacker_uuid=str(attacker.unique_id) if is_player_attacker else "",
+            is_player=isinstance(victim, Player),
+            dimension=self._get_dimension_key(victim),
+            is_op=is_player_attacker and attacker.is_op,
         )
+
         if not can_damage:
             event.is_cancelled = True
-            if isinstance(attacker, Player):
+            if is_player_attacker:
                 attacker.send_message(f"§c{reason}")
 
-    def _get_dimension_key(self, entity: Actor) -> str:
+    def _get_dimension_key(self, actor) -> str:
         try:
-            dim = entity.location.dimension
-            dim_name = dim.name.lower()
+            dim_name = actor.dimension.name.lower()
             if "nether" in dim_name:
                 return "nether"
             if "end" in dim_name:

@@ -1,4 +1,9 @@
-from typing import Any
+from endstone.event import (
+    ActorExplodeEvent,
+    BlockExplodeEvent,
+    BlockPistonExtendEvent,
+    BlockPistonRetractEvent,
+)
 from endstone_landclaim.services.protection_service import ProtectionService
 from endstone_landclaim.config import ConfigManager
 
@@ -8,41 +13,35 @@ class ExplosionEventHandler:
         self.protection = protection_service
         self.config = config
 
-    def handle_block_explode(self, event: Any) -> None:
+    def handle_block_explode(self, event: BlockExplodeEvent) -> None:
         if not self.config.get("protection.protect_explosions", True):
             return
-
-        block_list = event.block_list
-        if not block_list:
+        if not event.block_list:
             return
+        event.block_list = [
+            block for block in event.block_list
+            if self.protection.can_use_explosives(block.x, block.z)
+        ]
 
-        protected_blocks = []
+    def handle_actor_explode(self, event: ActorExplodeEvent) -> None:
+        if not self.config.get("protection.protect_explosions", True):
+            return
+        if not event.block_list:
+            return
+        event.block_list = [
+            block for block in event.block_list
+            if self.protection.can_use_explosives(block.x, block.z)
+        ]
 
-        for block in block_list:
-            x, z = self._get_block_coords(block)
+    def handle_piston_extend(self, event: BlockPistonExtendEvent) -> None:
+        self._handle_piston(event)
 
-            if not self.protection.can_use_explosives(x, z):
-                protected_blocks.append(block)
+    def handle_piston_retract(self, event: BlockPistonRetractEvent) -> None:
+        self._handle_piston(event)
 
-        for block in protected_blocks:
-            if block in block_list:
-                block_list.remove(block)
-
-    def handle_piston_move(self, event: Any) -> None:
+    def _handle_piston(self, event) -> None:
         if not self.config.get("protection.protect_piston_push", True):
             return
-
         block = event.block
-        x, z = self._get_block_coords(block)
-
-        if not self.protection.can_use_piston(x, z):
+        if not self.protection.can_use_piston(block.x, block.z):
             event.is_cancelled = True
-
-    def _get_block_coords(self, block: Any) -> tuple:
-        try:
-            x = int(getattr(block, "x", 0))
-            z = int(getattr(block, "z", 0))
-            return x, z
-        except Exception:
-            pass
-        return 0, 0

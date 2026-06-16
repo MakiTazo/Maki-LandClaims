@@ -23,53 +23,37 @@ class SpacingService:
 
     def is_inside_spawn_radius(self, x: int, z: int) -> bool:
         sx, sz = self.get_spawn_center()
-        radius = self.get_spawn_radius()
-        distance = hypot(x - sx, z - sz)
-        return distance <= radius
+        return hypot(x - sx, z - sz) <= self.get_spawn_radius()
 
-    def distance_to_spawn(self, x: int, z: int) -> float:
+    def distance_to_spawn(self, x: float, z: float) -> float:
         sx, sz = self.get_spawn_center()
         return hypot(x - sx, z - sz)
 
-    def distance_between_points(self, x1: int, z1: int, x2: int, z2: int) -> float:
-        return hypot(x1 - x2, z1 - z2)
-
     def is_too_close_to_spawn(self, claim: ClaimData) -> bool:
-        min_dist = self.get_min_distance_from_spawn()
-        spawn_radius = self.get_spawn_radius()
-
-        center_x, center_z = claim.center_x, claim.center_z
-        distance = self.distance_to_spawn(int(center_x), int(center_z))
-
-        return distance < spawn_radius + claim.width
+        distance = self.distance_to_spawn(claim.center_x, claim.center_z)
+        return distance < self.get_spawn_radius() + claim.width
 
     def check_claim_spacing(self, new_claim: ClaimData, existing_claims: List[ClaimData]) -> List[str]:
-        conflicts: List[str] = []
         min_distance = self.get_min_distance_between_claims()
-
-        for existing in existing_claims:
-            if existing.dimension != new_claim.dimension:
-                continue
-
-            distance = new_claim.distance_to_claim(existing)
-
-            if distance < min_distance:
-                conflicts.append(existing.owner_name)
-
-        return conflicts
+        return [
+            existing.owner_name
+            for existing in existing_claims
+            if existing.dimension == new_claim.dimension
+            and new_claim.distance_to_claim(existing) < min_distance
+        ]
 
     def get_maximum_radius_at_position(
-            self,
-            x: int,
-            z: int,
-            owner_name: str,
-            existing_claims: List[ClaimData],
-            max_area: int = 10000,
+        self,
+        x: int,
+        z: int,
+        owner_name: str,
+        existing_claims: List[ClaimData],
+        max_area: int = 10000,
     ) -> int:
         if self.is_inside_spawn_radius(x, z):
             return 0
 
-        max_radius = int(max_area ** 0.5) // 2
+        max_radius = int(max_area ** 0.5 / 2)
 
         for r in range(max_radius, 0, -10):
             test_claim = ClaimData(
@@ -82,18 +66,15 @@ class SpacingService:
                 x2=x + r,
                 z2=z + r,
             )
-
-            conflicts = self.check_claim_spacing(test_claim, existing_claims)
-
-            if not conflicts:
+            if not self.check_claim_spacing(test_claim, existing_claims):
                 return r
 
         return 0
 
     def validate_claim_creation(
-            self,
-            claim: ClaimData,
-            existing_claims: List[ClaimData],
+        self,
+        claim: ClaimData,
+        existing_claims: List[ClaimData],
     ) -> Tuple[bool, Optional[str]]:
         if self.is_too_close_to_spawn(claim):
             return False, f"Too close to spawn (minimum {self.get_min_distance_from_spawn()} blocks)"

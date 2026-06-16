@@ -19,6 +19,10 @@ class PlayerData:
         self.clan_tag: Optional[str] = None
         self.wallet_bypass: bool = False
 
+    @property
+    def claim_count(self) -> int:
+        return len(self.claims)
+
     def update_last_seen(self) -> None:
         self.last_seen = datetime.utcnow().isoformat()
 
@@ -47,4 +51,4 @@ class PlayerData:
         return player
 
     def __repr__(self) -> str:
-        return f"PlayerData(name={self.name}, claims={len(self.claims)})"
+        return f"PlayerData(name={self.name}, claims={self.claim_count})"

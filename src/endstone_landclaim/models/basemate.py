@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from datetime import datetime
 from enum import IntEnum
 
@@ -9,44 +9,44 @@ class BasemateRank(IntEnum):
 
 class BasemateData:
 
+    _RANK_NAMES: Dict[BasemateRank, str] = {
+        BasemateRank.MEMBER: "Member",
+        BasemateRank.MANAGER: "Manager",
+        BasemateRank.OWNER: "Owner",
+    }
+
     def __init__(
         self,
         player_uuid: str,
         player_name: str,
         claim_id: str,
-        rank: int | BasemateRank = BasemateRank.MEMBER,
+        rank: Union[int, BasemateRank] = BasemateRank.MEMBER,
         added_at: Optional[str] = None,
     ) -> None:
         self.player_uuid = player_uuid
         self.player_name = player_name
         self.claim_id = claim_id
-        self.rank = BasemateRank(rank) if isinstance(rank, int) else rank
+        self.rank = BasemateRank(rank)
         self.added_at = added_at or datetime.utcnow().isoformat()
 
     @property
     def rank_name(self) -> str:
-        rank_names = {
-            BasemateRank.MEMBER: "Member",
-            BasemateRank.MANAGER: "Manager",
-            BasemateRank.OWNER: "Owner",
-        }
-        return rank_names.get(self.rank, "Unknown")
+        return self._RANK_NAMES.get(self.rank, "Unknown")
 
+    @property
     def is_manager(self) -> bool:
         return self.rank >= BasemateRank.MANAGER
 
+    @property
     def is_owner(self) -> bool:
         return self.rank == BasemateRank.OWNER
-
-    def can_manage_basemates(self) -> bool:
-        return self.rank >= BasemateRank.MANAGER
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "player_uuid": self.player_uuid,
             "player_name": self.player_name,
             "claim_id": self.claim_id,
-            "rank": self.rank,
+            "rank": int(self.rank),
             "added_at": self.added_at,
         }
 

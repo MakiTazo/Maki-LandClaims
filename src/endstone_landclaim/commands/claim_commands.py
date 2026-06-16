@@ -1,7 +1,6 @@
-import asyncio
-
 from typing import List, Optional
-from endstone import Player
+from endstone import Player, asyncio as endstone_asyncio
+from endstone.command import CommandSender, Command
 from endstone_landclaim.services.claim_service import ClaimService
 from endstone_landclaim.services.spacing_service import SpacingService
 from endstone_landclaim.services.protection_service import ProtectionService
@@ -11,13 +10,13 @@ from endstone_landclaim.config import ConfigManager
 class ClaimCommands:
 
     def __init__(
-            self,
-            plugin,
-            config: ConfigManager,
-            claim_service: ClaimService,
-            spacing_service: SpacingService,
-            protection_service: ProtectionService,
-            economy_service: EconomyService,
+        self,
+        plugin,
+        config: ConfigManager,
+        claim_service: ClaimService,
+        spacing_service: SpacingService,
+        protection_service: ProtectionService,
+        economy_service: EconomyService,
     ) -> None:
         self.plugin = plugin
         self.config = config
@@ -27,10 +26,10 @@ class ClaimCommands:
         self.economy = economy_service
 
     def handle_command(
-            self,
-            sender: CommandSender,
-            command: Command,
-            args: List[str],
+        self,
+        sender: CommandSender,
+        command: Command,
+        args: List[str],
     ) -> bool:
         player = self._as_player(sender)
         if not player:
@@ -41,22 +40,16 @@ class ClaimCommands:
 
         if cmd_name == "claimcreate":
             return self._handle_claim_create(player, args)
-
         if cmd_name == "claiminfo":
             return self._handle_claim_info(player, args)
-
         if cmd_name == "claimlist":
             return self._handle_claim_list(player, args)
-
         if cmd_name == "claimdelete":
             return self._handle_claim_delete(player, args)
-
         if cmd_name == "claimadd":
             return self._handle_claim_add_mate(player, args)
-
         if cmd_name == "claimremove":
             return self._handle_claim_remove_mate(player, args)
-
         if cmd_name == "claimvisualize":
             return self._handle_claim_visualize(player, args)
 
@@ -70,23 +63,18 @@ class ClaimCommands:
             return True
 
         creation_cost = self.economy.get_creation_cost()
-        def check_and_charge():
-            loop = asyncio.new_event_loop()
-            has_balance = loop.run_until_complete(
-                self.economy.check_balance(player_uuid, creation_cost)
-            )
 
-            if not has_balance:
-                player.send_message(f"§cInsufficient funds. Need {creation_cost} {self.economy.get_currency()}")
-                return False
+        has_balance = endstone_asyncio.submit(
+            self.economy.check_balance(player_uuid, creation_cost)
+        ).result()
 
-            loop.run_until_complete(
-                self.economy.charge_player(player_uuid, creation_cost, "Claim creation")
-            )
+        if not has_balance:
+            player.send_message(f"§cInsufficient funds. Need {creation_cost} coins.")
             return True
 
-        if not check_and_charge():
-            return True
+        endstone_asyncio.submit(
+            self.economy.charge_player(player_uuid, creation_cost)
+        ).result()
 
         location = player.location
         x = int(location.x)
@@ -107,7 +95,7 @@ class ClaimCommands:
 
         if claim:
             player.send_message(f"§aCreated claim: {claim_name} ({claim.width}x{claim.depth})")
-            player.send_message(f"§7Cost: {creation_cost} {self.economy.get_currency()}")
+            player.send_message(f"§7Cost: {creation_cost} coins.")
         else:
             player.send_message("§cFailed to create claim.")
 
@@ -115,11 +103,9 @@ class ClaimCommands:
 
     def _handle_claim_info(self, player: Player, args: List[str]) -> bool:
         location = player.location
-        x = int(location.x)
-        z = int(location.z)
-        dimension = self._get_dimension_key(player)
-
-        claim = self.claim_service.get_claim_at_position(x, z, dimension)
+        claim = self.claim_service.get_claim_at_position(
+            int(location.x), int(location.z), self._get_dimension_key(player)
+        )
 
         if not claim:
             player.send_message("§7You are in wilderness (no claim here).")
@@ -131,12 +117,10 @@ class ClaimCommands:
         player.send_message(f"§7Area: §e{claim.width}x{claim.depth} = {claim.area} blocks")
         player.send_message(f"§7Center: §e{int(claim.center_x)}, {int(claim.center_z)}")
         player.send_message(f"§7Dimension: §e{claim.dimension}")
-
         return True
 
     def _handle_claim_list(self, player: Player, args: List[str]) -> bool:
-        player_uuid = str(player.unique_id)
-        claims = self.claim_service.get_player_claims(player_uuid)
+        claims = self.claim_service.get_player_claims(str(player.unique_id))
 
         if not claims:
             player.send_message("§7You have no claims.")
@@ -146,7 +130,6 @@ class ClaimCommands:
         for claim in claims:
             status = "§c[EXPIRED]" if claim.is_expired else "§a[ACTIVE]"
             player.send_message(f"§7- {status} §e{claim.name} §7({claim.width}x{claim.depth})")
-
         return True
 
     def _handle_claim_delete(self, player: Player, args: List[str]) -> bool:
@@ -155,14 +138,8 @@ class ClaimCommands:
             return True
 
         claim_name = " ".join(args)
-        player_uuid = str(player.unique_id)
-        claims = self.claim_service.get_player_claims(player_uuid)
-
-        claim_to_delete = None
-        for claim in claims:
-            if claim.name.lower() == claim_name.lower():
-                claim_to_delete = claim
-                break
+        claims = self.claim_service.get_player_claims(str(player.unique_id))
+        claim_to_delete = next((c for c in claims if c.name.lower() == claim_name.lower()), None)
 
         if not claim_to_delete:
             player.send_message(f"§cClaim '{claim_name}' not found.")
@@ -171,33 +148,31 @@ class ClaimCommands:
         if self.claim_service.delete_claim(claim_to_delete.id):
             player.send_message(f"§aDeleted claim: {claim_to_delete.name}")
         else:
-            player.send_message(f"§cFailed to delete claim.")
+            player.send_message("§cFailed to delete claim.")
 
         return True
 
+    def _get_claim_at_player(self, player: Player):
+        location = player.location
+        return self.claim_service.get_claim_at_position(
+            int(location.x), int(location.z), self._get_dimension_key(player)
+        )
+
     def _handle_claim_add_mate(self, player: Player, args: List[str]) -> bool:
-        if len(args) < 1:
+        if not args:
             player.send_message("§cUsage: /claimadd <player_name>")
             return True
 
-        mate_name = args[0]
-
-        location = player.location
-        x = int(location.x)
-        z = int(location.z)
-        dimension = self._get_dimension_key(player)
-
-        claim = self.claim_service.get_claim_at_position(x, z, dimension)
-
+        claim = self._get_claim_at_player(player)
         if not claim:
             player.send_message("§cYou are not in a claim.")
             return True
 
-        player_uuid = str(player.unique_id)
-        if not self.protection.is_owner(claim.id, player_uuid):
+        if not self.protection.is_owner(claim.id, str(player.unique_id)):
             player.send_message("§cYou are not the owner of this claim.")
             return True
 
+        mate_name = args[0]
         try:
             mate_player = self.claim_service.db.get_player_by_name(mate_name)
             if not mate_player:
@@ -214,28 +189,20 @@ class ClaimCommands:
         return True
 
     def _handle_claim_remove_mate(self, player: Player, args: List[str]) -> bool:
-        if len(args) < 1:
+        if not args:
             player.send_message("§cUsage: /claimremove <player_name>")
             return True
 
-        mate_name = args[0]
-
-        location = player.location
-        x = int(location.x)
-        z = int(location.z)
-        dimension = self._get_dimension_key(player)
-
-        claim = self.claim_service.get_claim_at_position(x, z, dimension)
-
+        claim = self._get_claim_at_player(player)
         if not claim:
             player.send_message("§cYou are not in a claim.")
             return True
 
-        player_uuid = str(player.unique_id)
-        if not self.protection.is_owner(claim.id, player_uuid):
+        if not self.protection.is_owner(claim.id, str(player.unique_id)):
             player.send_message("§cYou are not the owner of this claim.")
             return True
 
+        mate_name = args[0]
         try:
             mate_player = self.claim_service.db.get_player_by_name(mate_name)
             if not mate_player:
@@ -252,17 +219,13 @@ class ClaimCommands:
         return True
 
     def _handle_claim_visualize(self, player: Player, args: List[str]) -> bool:
-        location = player.location
-        x = int(location.x)
-        z = int(location.z)
-        y = location.y
-        dimension = self._get_dimension_key(player)
-        claim = self.claim_service.get_claim_at_position(x, z, dimension)
+        claim = self._get_claim_at_player(player)
 
         if not claim:
             player.send_message("§7You are in wilderness (no claim here).")
             return True
 
+        y = player.location.y
         step = 5
         duration_ticks = 200
         particle_type = "minecraft:endrod"
@@ -271,24 +234,14 @@ class ClaimCommands:
             from endstone.command import CommandSenderWrapper
             silent_sender = CommandSenderWrapper(self.plugin.server.command_sender, on_message=lambda msg: None)
             for x_pos in range(claim.x1, claim.x2 + 1, step):
-                cmd = f"execute as {player.name} at @s run particle {particle_type} {x_pos} {y} {claim.z1 - 1}"
-                self.plugin.server.dispatch_command(silent_sender, cmd)
-            for x_pos in range(claim.x1, claim.x2 + 1, step):
-                cmd = f"execute as {player.name} at @s run particle {particle_type} {x_pos} {y} {claim.z2 + 1}"
-                self.plugin.server.dispatch_command(silent_sender, cmd)
+                self.plugin.server.dispatch_command(silent_sender, f"execute as {player.name} at @s run particle {particle_type} {x_pos} {y} {claim.z1 - 1}")
+                self.plugin.server.dispatch_command(silent_sender, f"execute as {player.name} at @s run particle {particle_type} {x_pos} {y} {claim.z2 + 1}")
             for z_pos in range(claim.z1, claim.z2 + 1, step):
-                cmd = f"execute as {player.name} at @s run particle {particle_type} {claim.x1 - 1} {y} {z_pos}"
-                self.plugin.server.dispatch_command(silent_sender, cmd)
-            for z_pos in range(claim.z1, claim.z2 + 1, step):
-                cmd = f"execute as {player.name} at @s run particle {particle_type} {claim.x2 + 1} {y} {z_pos}"
-                self.plugin.server.dispatch_command(silent_sender, cmd)
+                self.plugin.server.dispatch_command(silent_sender, f"execute as {player.name} at @s run particle {particle_type} {claim.x1 - 1} {y} {z_pos}")
+                self.plugin.server.dispatch_command(silent_sender, f"execute as {player.name} at @s run particle {particle_type} {claim.x2 + 1} {y} {z_pos}")
 
-        # Guardar la task para cancelarla después
         particle_task = self.plugin.server.scheduler.run_task(
-            self.plugin,
-            show_particles,
-            delay=0,
-            period=1
+            self.plugin, show_particles, delay=0, period=1
         )
 
         def stop_particles():
@@ -296,9 +249,7 @@ class ClaimCommands:
             player.send_message("§7Visualization ended.")
 
         self.plugin.server.scheduler.run_task(
-            self.plugin,
-            stop_particles,
-            delay=duration_ticks
+            self.plugin, stop_particles, delay=duration_ticks
         )
 
         player.send_message("§aVisualizing claim boundaries for 10 seconds...")
@@ -309,8 +260,7 @@ class ClaimCommands:
 
     def _get_dimension_key(self, player: Player) -> str:
         try:
-            dim = player.location.dimension
-            dim_name = dim.name.lower()
+            dim_name = player.location.dimension.name.lower()
             if "nether" in dim_name:
                 return "nether"
             if "end" in dim_name:

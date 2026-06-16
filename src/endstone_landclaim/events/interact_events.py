@@ -1,4 +1,3 @@
-from endstone import Player
 from endstone.event import PlayerInteractEvent
 from endstone_landclaim.services.protection_service import ProtectionService
 from endstone_landclaim.config import ConfigManager
@@ -10,26 +9,19 @@ class InteractEventHandler:
         self.config = config
 
     def handle_player_interact(self, event: PlayerInteractEvent) -> None:
-        player = event.player
-        if not isinstance(player, Player):
-            return
-
         if not self.config.get("protection.protect_interact", True):
             return
 
         if not event.has_block:
             return
 
+        player = event.player
         block = event.block
-        x = int(block.x)
-        z = int(block.z)
-        dimension = self._get_dimension_key(player)
-
         can_interact, reason = self.protection.can_interact(
-            x, z,
+            block.x,
+            block.z,
             player_uuid=str(player.unique_id),
-            player_name=player.name,
-            dimension=dimension,
+            dimension=self._get_dimension_key(block),
             is_op=player.is_op,
         )
 
@@ -37,10 +29,9 @@ class InteractEventHandler:
             event.is_cancelled = True
             player.send_message(f"§c{reason}")
 
-    def _get_dimension_key(self, player: Player) -> str:
+    def _get_dimension_key(self, block) -> str:
         try:
-            dim = player.location.dimension
-            dim_name = dim.name.lower()
+            dim_name = block.dimension.name.lower()
             if "nether" in dim_name:
                 return "nether"
             if "end" in dim_name:

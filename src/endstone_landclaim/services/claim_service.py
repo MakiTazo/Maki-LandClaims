@@ -18,16 +18,36 @@ class ClaimService:
     def get_grace_period_days(self) -> int:
         return int(self.config.get("economy.grace_period_days", 2))
 
+    def _claim_from_dict(self, db_claim: Dict[str, Any], owner_name: Optional[str] = None) -> ClaimData:
+        if owner_name is None:
+            owner = self.db.get_player_by_uuid(db_claim["owner_uuid"])
+            owner_name = owner["name"] if owner else "Unknown"
+
+        return ClaimData(
+            claim_id=db_claim["id"],
+            owner_uuid=db_claim["owner_uuid"],
+            owner_name=owner_name,
+            name=db_claim["name"],
+            x1=db_claim["x1"],
+            z1=db_claim["z1"],
+            x2=db_claim["x2"],
+            z2=db_claim["z2"],
+            dimension=db_claim["dimension"],
+            created_at=db_claim["created_at"],
+            expires_at=db_claim["expires_at"],
+            is_expired=bool(db_claim["is_expired"]),
+        )
+
     def create_claim(
-            self,
-            owner_uuid: str,
-            owner_name: str,
-            claim_name: str,
-            x1: int,
-            z1: int,
-            x2: int,
-            z2: int,
-            dimension: str = "overworld",
+        self,
+        owner_uuid: str,
+        owner_name: str,
+        claim_name: str,
+        x1: int,
+        z1: int,
+        x2: int,
+        z2: int,
+        dimension: str = "overworld",
     ) -> Optional[ClaimData]:
         claim_id = f"{owner_name}_{len(self.get_player_claims(owner_uuid))}"
         expiration_days = self.get_claim_expiration_days()
@@ -45,23 +65,7 @@ class ClaimService:
                 dimension=dimension,
                 expiration_days=expiration_days,
             )
-
-            claim = ClaimData(
-                claim_id=db_claim["id"],
-                owner_uuid=db_claim["owner_uuid"],
-                owner_name=owner_name,
-                name=db_claim["name"],
-                x1=db_claim["x1"],
-                z1=db_claim["z1"],
-                x2=db_claim["x2"],
-                z2=db_claim["z2"],
-                dimension=db_claim["dimension"],
-                created_at=db_claim["created_at"],
-                expires_at=db_claim["expires_at"],
-                is_expired=bool(db_claim["is_expired"]),
-            )
-
-            return claim
+            return self._claim_from_dict(db_claim, owner_name)
         except Exception:
             return None
 
@@ -71,23 +75,7 @@ class ClaimService:
             if not db_claim:
                 return None
 
-            owner = self.db.get_player_by_uuid(db_claim["owner_uuid"])
-            owner_name = owner["name"] if owner else "Unknown"
-
-            claim = ClaimData(
-                claim_id=db_claim["id"],
-                owner_uuid=db_claim["owner_uuid"],
-                owner_name=owner_name,
-                name=db_claim["name"],
-                x1=db_claim["x1"],
-                z1=db_claim["z1"],
-                x2=db_claim["x2"],
-                z2=db_claim["z2"],
-                dimension=db_claim["dimension"],
-                created_at=db_claim["created_at"],
-                expires_at=db_claim["expires_at"],
-                is_expired=bool(db_claim["is_expired"]),
-            )
+            claim = self._claim_from_dict(db_claim)
 
             perms = self.db.get_permissions(claim_id)
             if perms:
@@ -98,8 +86,7 @@ class ClaimService:
                     "allow_pvp": bool(perms["allow_pvp"]),
                 }
 
-            basemates = self.db.get_basemates(claim_id)
-            for bm in basemates:
+            for bm in self.db.get_basemates(claim_id):
                 claim.basemates.append(bm["player_uuid"])
                 claim.basemate_ranks[bm["player_uuid"]] = bm["rank"]
 
@@ -109,30 +96,10 @@ class ClaimService:
 
     def get_player_claims(self, owner_uuid: str) -> List[ClaimData]:
         try:
-            db_claims = self.db.get_claims_by_owner(owner_uuid)
-            claims: List[ClaimData] = []
-
-            for db_claim in db_claims:
-                owner = self.db.get_player_by_uuid(db_claim["owner_uuid"])
-                owner_name = owner["name"] if owner else "Unknown"
-
-                claim = ClaimData(
-                    claim_id=db_claim["id"],
-                    owner_uuid=db_claim["owner_uuid"],
-                    owner_name=owner_name,
-                    name=db_claim["name"],
-                    x1=db_claim["x1"],
-                    z1=db_claim["z1"],
-                    x2=db_claim["x2"],
-                    z2=db_claim["z2"],
-                    dimension=db_claim["dimension"],
-                    created_at=db_claim["created_at"],
-                    expires_at=db_claim["expires_at"],
-                    is_expired=bool(db_claim["is_expired"]),
-                )
-                claims.append(claim)
-
-            return claims
+            return [
+                self._claim_from_dict(db_claim)
+                for db_claim in self.db.get_claims_by_owner(owner_uuid)
+            ]
         except Exception:
             return []
 
@@ -141,33 +108,28 @@ class ClaimService:
             db_claim = self.db.get_claim_at_position(x, z, dimension)
             if not db_claim:
                 return None
-
             return self.get_claim(db_claim["id"])
         except Exception:
             return None
 
     def get_all_claims(self, dimension: str = "overworld") -> List[ClaimData]:
         try:
-            db_claims = self.db.get_all_claims(dimension)
-            claims: List[ClaimData] = []
-
-            for db_claim in db_claims:
-                claim = self.get_claim(db_claim["id"])
-                if claim:
-                    claims.append(claim)
-
-            return claims
+            return [
+                claim
+                for db_claim in self.db.get_all_claims(dimension)
+                if (claim := self.get_claim(db_claim["id"])) is not None
+            ]
         except Exception:
             return []
 
     def update_claim(
-            self,
-            claim_id: str,
-            name: Optional[str] = None,
-            x1: Optional[int] = None,
-            z1: Optional[int] = None,
-            x2: Optional[int] = None,
-            z2: Optional[int] = None,
+        self,
+        claim_id: str,
+        name: Optional[str] = None,
+        x1: Optional[int] = None,
+        z1: Optional[int] = None,
+        x2: Optional[int] = None,
+        z2: Optional[int] = None,
     ) -> bool:
         try:
             updates: Dict[str, Any] = {}
@@ -181,10 +143,7 @@ class ClaimService:
                 updates["z1"] = min(z1, z2)
                 updates["z2"] = max(z1, z2)
 
-            if updates:
-                return self.db.update_claim(claim_id, **updates)
-
-            return True
+            return self.db.update_claim(claim_id, **updates) if updates else True
         except Exception:
             return False
 
@@ -196,37 +155,31 @@ class ClaimService:
 
     def renew_claim_subscription(self, claim_id: str, days: Optional[int] = None) -> bool:
         try:
-            if days is None:
-                days = self.get_claim_expiration_days()
-
-            return self.db.renew_claim(claim_id, days)
+            return self.db.renew_claim(claim_id, days or self.get_claim_expiration_days())
         except Exception:
             return False
 
     def set_claim_permissions(
-            self,
-            claim_id: str,
-            allow_build: Optional[bool] = None,
-            allow_interact: Optional[bool] = None,
-            allow_mob_damage: Optional[bool] = None,
-            allow_pvp: Optional[bool] = None,
+        self,
+        claim_id: str,
+        allow_build: Optional[bool] = None,
+        allow_interact: Optional[bool] = None,
+        allow_mob_damage: Optional[bool] = None,
+        allow_pvp: Optional[bool] = None,
     ) -> bool:
         try:
             updates: Dict[str, Any] = {}
 
             if allow_build is not None:
-                updates["allow_build"] = 1 if allow_build else 0
+                updates["allow_build"] = int(allow_build)
             if allow_interact is not None:
-                updates["allow_interact"] = 1 if allow_interact else 0
+                updates["allow_interact"] = int(allow_interact)
             if allow_mob_damage is not None:
-                updates["allow_mob_damage"] = 1 if allow_mob_damage else 0
+                updates["allow_mob_damage"] = int(allow_mob_damage)
             if allow_pvp is not None:
-                updates["allow_pvp"] = 1 if allow_pvp else 0
+                updates["allow_pvp"] = int(allow_pvp)
 
-            if updates:
-                return self.db.set_permissions(claim_id, **updates)
-
-            return True
+            return self.db.set_permissions(claim_id, **updates) if updates else True
         except Exception:
             return False
 
@@ -255,8 +208,7 @@ class ClaimService:
             return None
 
     def is_basemate(self, claim_id: str, player_uuid: str) -> bool:
-        rank = self.get_basemate_rank(claim_id, player_uuid)
-        return rank is not None
+        return self.get_basemate_rank(claim_id, player_uuid) is not None
 
     def mark_expired_claims(self) -> int:
         try:
@@ -268,17 +220,9 @@ class ClaimService:
         try:
             grace_days = self.get_grace_period_days()
             expired_claims = self.db.get_expired_claims(grace_days)
-
-            deleted = 0
-            for claim in expired_claims:
-                if self.delete_claim(claim["id"]):
-                    deleted += 1
-
-            return deleted
+            return sum(1 for claim in expired_claims if self.delete_claim(claim["id"]))
         except Exception:
             return 0
 
     def player_has_claim_space(self, owner_uuid: str) -> bool:
-        claims = self.get_player_claims(owner_uuid)
-        max_claims = self.get_max_claims_per_player()
-        return len(claims) < max_claims
+        return len(self.get_player_claims(owner_uuid)) < self.get_max_claims_per_player()

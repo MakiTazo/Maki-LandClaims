@@ -1,11 +1,12 @@
 import sqlite3
 import os
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 
 
 class Database:
-    def __init__(self, db_path: str, data_folder: str = ""):
+
+    def __init__(self, db_path: str, data_folder: str = "") -> None:
         if not os.path.isabs(db_path) and data_folder:
             db_path = os.path.join(data_folder, db_path)
         self.db_path = db_path
@@ -16,20 +17,19 @@ class Database:
         self._init_schema()
 
     def _get_connection(self) -> sqlite3.Connection:
-        """Obtiene o crea la conexión a la BD."""
         if self.conn is None:
             self.conn = sqlite3.connect(self.db_path)
             self.conn.row_factory = sqlite3.Row
-            # Enable WAL mode para mejor performance
             self.conn.execute("PRAGMA journal_mode=WAL")
         return self.conn
 
+    def _row(self, row: sqlite3.Row) -> Dict[str, Any]:
+        return dict(row)
+
     def _init_schema(self) -> None:
-        """Crea las tablas si no existen."""
         conn = self._get_connection()
         cursor = conn.cursor()
 
-        # Tabla de jugadores
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS players (
                 uuid TEXT PRIMARY KEY,
@@ -39,7 +39,6 @@ class Database:
             )
         """)
 
-        # Tabla de claims
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS claims (
                 id TEXT PRIMARY KEY,
@@ -58,9 +57,8 @@ class Database:
             )
         """)
 
-        # Tabla de basemates (jugadores con acceso a un claim)
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS basemmates (
+            CREATE TABLE IF NOT EXISTS basemates (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 claim_id TEXT NOT NULL,
                 player_uuid TEXT NOT NULL,
@@ -72,7 +70,6 @@ class Database:
             )
         """)
 
-        # Tabla de permisos del claim
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS claim_permissions (
                 claim_id TEXT PRIMARY KEY,
@@ -84,7 +81,6 @@ class Database:
             )
         """)
 
-        # Tabla de transacciones de economía
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS transactions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -102,17 +98,11 @@ class Database:
         conn.commit()
 
     def close(self) -> None:
-        """Cierra la conexión."""
         if self.conn:
             self.conn.close()
             self.conn = None
 
-    # ═══════════════════════════════════════════════════════════════
-    # PLAYERS
-    # ═══════════════════════════════════════════════════════════════
-
     def get_or_create_player(self, uuid: str, name: str) -> Dict[str, Any]:
-        """Obtiene o crea un registro de jugador."""
         conn = self._get_connection()
         cursor = conn.cursor()
 
@@ -122,61 +112,49 @@ class Database:
         if row:
             cursor.execute("UPDATE players SET last_seen = CURRENT_TIMESTAMP WHERE uuid = ?", (uuid,))
             conn.commit()
-            return dict(row)
+            return self._row(row)
 
-        cursor.execute(
-            "INSERT INTO players (uuid, name) VALUES (?, ?)",
-            (uuid, name),
-        )
+        cursor.execute("INSERT INTO players (uuid, name) VALUES (?, ?)", (uuid, name))
         conn.commit()
-
         cursor.execute("SELECT * FROM players WHERE uuid = ?", (uuid,))
-        return dict(cursor.fetchone())
+        return self._row(cursor.fetchone())
 
     def get_player_by_uuid(self, uuid: str) -> Optional[Dict[str, Any]]:
-        """Obtiene un jugador por UUID."""
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM players WHERE uuid = ?", (uuid,))
         row = cursor.fetchone()
-        return dict(row) if row else None
+        return self._row(row) if row else None
 
     def get_player_by_name(self, name: str) -> Optional[Dict[str, Any]]:
-        """Obtiene un jugador por nombre."""
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM players WHERE name = ?", (name,))
         row = cursor.fetchone()
-        return dict(row) if row else None
-
-    # ═══════════════════════════════════════════════════════════════
-    # CLAIMS
-    # ═══════════════════════════════════════════════════════════════
+        return self._row(row) if row else None
 
     def create_claim(
-            self,
-            claim_id: str,
-            owner_uuid: str,
-            owner_name: str,  # Agregar este parámetro
-            name: str,
-            x1: int,
-            z1: int,
-            x2: int,
-            z2: int,
-            dimension: str = "overworld",
-            expiration_days: int = 7,
+        self,
+        claim_id: str,
+        owner_uuid: str,
+        owner_name: str,
+        name: str,
+        x1: int,
+        z1: int,
+        x2: int,
+        z2: int,
+        dimension: str = "overworld",
+        expiration_days: int = 7,
     ) -> Dict[str, Any]:
-        """Crea un nuevo claim."""
         conn = self._get_connection()
         cursor = conn.cursor()
 
-        # Asegurar que el owner existe
         cursor.execute(
             "INSERT OR IGNORE INTO players (uuid, name) VALUES (?, ?)",
             (owner_uuid, owner_name),
         )
 
-        expires_at = datetime.utcnow() + timedelta(days=expiration_days)
+        expires_at = (datetime.utcnow() + timedelta(days=expiration_days)).isoformat()
 
         cursor.execute(
             """
@@ -184,40 +162,32 @@ class Database:
             (id, owner_uuid, name, x1, z1, x2, z2, dimension, expires_at, last_maintained)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             """,
-            (claim_id, owner_uuid, name, x1, z1, x2, z2, dimension, expires_at.isoformat()),
+            (claim_id, owner_uuid, name, x1, z1, x2, z2, dimension, expires_at),
         )
 
-        # Crear permisos por defecto
-        cursor.execute(
-            "INSERT INTO claim_permissions (claim_id) VALUES (?)",
-            (claim_id,),
-        )
-
+        cursor.execute("INSERT INTO claim_permissions (claim_id) VALUES (?)", (claim_id,))
         conn.commit()
 
         cursor.execute("SELECT * FROM claims WHERE id = ?", (claim_id,))
-        return dict(cursor.fetchone())
+        return self._row(cursor.fetchone())
 
     def get_claim(self, claim_id: str) -> Optional[Dict[str, Any]]:
-        """Obtiene un claim por ID."""
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM claims WHERE id = ?", (claim_id,))
         row = cursor.fetchone()
-        return dict(row) if row else None
+        return self._row(row) if row else None
 
     def get_claims_by_owner(self, owner_uuid: str) -> List[Dict[str, Any]]:
-        """Obtiene todos los claims de un jugador."""
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute(
             "SELECT * FROM claims WHERE owner_uuid = ? AND is_expired = 0",
             (owner_uuid,),
         )
-        return [dict(row) for row in cursor.fetchall()]
+        return [self._row(row) for row in cursor.fetchall()]
 
     def get_claim_at_position(self, x: int, z: int, dimension: str = "overworld") -> Optional[Dict[str, Any]]:
-        """Obtiene el claim en una posición específica."""
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -230,20 +200,18 @@ class Database:
             (dimension, x, x, z, z),
         )
         row = cursor.fetchone()
-        return dict(row) if row else None
+        return self._row(row) if row else None
 
     def get_all_claims(self, dimension: str = "overworld") -> List[Dict[str, Any]]:
-        """Obtiene todos los claims activos en una dimensión."""
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute(
             "SELECT * FROM claims WHERE dimension = ? AND is_expired = 0",
             (dimension,),
         )
-        return [dict(row) for row in cursor.fetchall()]
+        return [self._row(row) for row in cursor.fetchall()]
 
     def update_claim(self, claim_id: str, **kwargs) -> bool:
-        """Actualiza un claim."""
         conn = self._get_connection()
         cursor = conn.cursor()
 
@@ -253,23 +221,19 @@ class Database:
         if not updates:
             return False
 
-        set_clause = ", ".join(f"{k} = ?" for k in updates.keys())
-        values = list(updates.values()) + [claim_id]
-
+        set_clause = ", ".join(f"{k} = ?" for k in updates)
         cursor.execute(
             f"UPDATE claims SET {set_clause} WHERE id = ?",
-            values,
+            [*updates.values(), claim_id],
         )
         conn.commit()
         return True
 
     def delete_claim(self, claim_id: str) -> bool:
-        """Elimina un claim y sus datos asociados."""
         conn = self._get_connection()
         cursor = conn.cursor()
-
         try:
-            cursor.execute("DELETE FROM basemmates WHERE claim_id = ?", (claim_id,))
+            cursor.execute("DELETE FROM basemates WHERE claim_id = ?", (claim_id,))
             cursor.execute("DELETE FROM claim_permissions WHERE claim_id = ?", (claim_id,))
             cursor.execute("DELETE FROM claims WHERE id = ?", (claim_id,))
             conn.commit()
@@ -277,18 +241,12 @@ class Database:
         except Exception:
             return False
 
-    # ═══════════════════════════════════════════════════════════════
-    # BASEMATES
-    # ═══════════════════════════════════════════════════════════════
-
     def add_basemate(self, claim_id: str, player_uuid: str, rank: int = 0) -> bool:
-        """Añade un basemate a un claim."""
         conn = self._get_connection()
         cursor = conn.cursor()
-
         try:
             cursor.execute(
-                "INSERT INTO basemmates (claim_id, player_uuid, rank) VALUES (?, ?, ?)",
+                "INSERT INTO basemates (claim_id, player_uuid, rank) VALUES (?, ?, ?)",
                 (claim_id, player_uuid, rank),
             )
             conn.commit()
@@ -297,66 +255,56 @@ class Database:
             return False
 
     def remove_basemate(self, claim_id: str, player_uuid: str) -> bool:
-        """Remueve un basemate de un claim."""
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "DELETE FROM basemmates WHERE claim_id = ? AND player_uuid = ?",
+            "DELETE FROM basemates WHERE claim_id = ? AND player_uuid = ?",
             (claim_id, player_uuid),
         )
         conn.commit()
         return cursor.rowcount > 0
 
     def get_basemates(self, claim_id: str) -> List[Dict[str, Any]]:
-        """Obtiene todos los basemates de un claim."""
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT bm.*, p.name FROM basemmates bm
+            SELECT bm.*, p.name FROM basemates bm
             JOIN players p ON bm.player_uuid = p.uuid
             WHERE bm.claim_id = ?
             """,
             (claim_id,),
         )
-        return [dict(row) for row in cursor.fetchall()]
+        return [self._row(row) for row in cursor.fetchall()]
 
     def get_basemate_rank(self, claim_id: str, player_uuid: str) -> Optional[int]:
-        """Obtiene el rango de un basemate."""
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT rank FROM basemmates WHERE claim_id = ? AND player_uuid = ?",
+            "SELECT rank FROM basemates WHERE claim_id = ? AND player_uuid = ?",
             (claim_id, player_uuid),
         )
         row = cursor.fetchone()
         return int(row[0]) if row else None
 
     def set_basemate_rank(self, claim_id: str, player_uuid: str, rank: int) -> bool:
-        """Actualiza el rango de un basemate."""
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE basemmates SET rank = ? WHERE claim_id = ? AND player_uuid = ?",
+            "UPDATE basemates SET rank = ? WHERE claim_id = ? AND player_uuid = ?",
             (rank, claim_id, player_uuid),
         )
         conn.commit()
         return cursor.rowcount > 0
 
-    # ═══════════════════════════════════════════════════════════════
-    # PERMISSIONS
-    # ═══════════════════════════════════════════════════════════════
-
     def get_permissions(self, claim_id: str) -> Optional[Dict[str, Any]]:
-        """Obtiene los permisos de un claim."""
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM claim_permissions WHERE claim_id = ?", (claim_id,))
         row = cursor.fetchone()
-        return dict(row) if row else None
+        return self._row(row) if row else None
 
     def set_permissions(self, claim_id: str, **kwargs) -> bool:
-        """Actualiza los permisos de un claim."""
         conn = self._get_connection()
         cursor = conn.cursor()
 
@@ -366,19 +314,13 @@ class Database:
         if not updates:
             return False
 
-        set_clause = ", ".join(f"{k} = ?" for k in updates.keys())
-        values = list(updates.values()) + [claim_id]
-
+        set_clause = ", ".join(f"{k} = ?" for k in updates)
         cursor.execute(
             f"UPDATE claim_permissions SET {set_clause} WHERE claim_id = ?",
-            values,
+            [*updates.values(), claim_id],
         )
         conn.commit()
         return True
-
-    # ═══════════════════════════════════════════════════════════════
-    # TRANSACTIONS
-    # ═══════════════════════════════════════════════════════════════
 
     def add_transaction(
         self,
@@ -388,7 +330,6 @@ class Database:
         claim_id: Optional[str] = None,
         reason: Optional[str] = None,
     ) -> int:
-        """Registra una transacción de economía."""
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -408,17 +349,15 @@ class Database:
         claim_id: Optional[str] = None,
         limit: int = 100,
     ) -> List[Dict[str, Any]]:
-        """Obtiene transacciones filtradas."""
         conn = self._get_connection()
         cursor = conn.cursor()
 
         query = "SELECT * FROM transactions WHERE 1=1"
-        params: List[str] = []
+        params: List[Any] = []
 
         if player_uuid:
             query += " AND player_uuid = ?"
             params.append(player_uuid)
-
         if claim_id:
             query += " AND claim_id = ?"
             params.append(claim_id)
@@ -427,14 +366,9 @@ class Database:
         params.append(limit)
 
         cursor.execute(query, params)
-        return [dict(row) for row in cursor.fetchall()]
-
-    # ═══════════════════════════════════════════════════════════════
-    # MAINTENANCE & CLEANUP
-    # ═══════════════════════════════════════════════════════════════
+        return [self._row(row) for row in cursor.fetchall()]
 
     def mark_expired_claims(self) -> int:
-        """Marca claims como expirados si su fecha ha pasado."""
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -447,27 +381,20 @@ class Database:
         return cursor.rowcount
 
     def get_expired_claims(self, grace_period_days: int = 2) -> List[Dict[str, Any]]:
-        """Obtiene claims expirados hace más de N días (listos para eliminar)."""
         conn = self._get_connection()
         cursor = conn.cursor()
-
-        grace_date = datetime.utcnow() - timedelta(days=grace_period_days)
-
+        grace_date = (datetime.utcnow() - timedelta(days=grace_period_days)).isoformat()
         cursor.execute(
-            """
-            SELECT * FROM claims
-            WHERE is_expired = 1 AND expires_at < ?
-            """,
-            (grace_date.isoformat(),),
+            "SELECT * FROM claims WHERE is_expired = 1 AND expires_at < ?",
+            (grace_date,),
         )
-        return [dict(row) for row in cursor.fetchall()]
+        return [self._row(row) for row in cursor.fetchall()]
 
     def renew_claim(self, claim_id: str, days: int = 7) -> bool:
-        """Renueva un claim por N días."""
-        new_expiration = datetime.utcnow() + timedelta(days=days)
+        now = datetime.utcnow()
         return self.update_claim(
             claim_id,
-            expires_at=new_expiration.isoformat(),
-            last_maintained=datetime.utcnow().isoformat(),
+            expires_at=(now + timedelta(days=days)).isoformat(),
+            last_maintained=now.isoformat(),
             is_expired=0,
         )

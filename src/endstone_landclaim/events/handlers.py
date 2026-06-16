@@ -4,11 +4,12 @@ from endstone.event import (
     BlockPlaceEvent,
     BlockBreakEvent,
     PlayerInteractEvent,
+    PlayerJoinEvent,
     ActorDamageEvent,
     BlockExplodeEvent,
     ActorExplodeEvent,
     BlockPistonExtendEvent,
-    BlockPistonRetractEvent, PlayerJoinEvent,
+    BlockPistonRetractEvent,
 )
 from endstone_landclaim.services.protection_service import ProtectionService
 from endstone_landclaim.config import ConfigManager
@@ -17,15 +18,14 @@ from endstone_landclaim.events.interact_events import InteractEventHandler
 from endstone_landclaim.events.damage_events import DamageEventHandler
 from endstone_landclaim.events.explosion_events import ExplosionEventHandler
 
-
 class EventHandlers:
 
     def __init__(
-            self,
-            plugin: Plugin,
-            protection_service: ProtectionService,
-            config: ConfigManager,
-            database,  # Agregar esto
+        self,
+        plugin: Plugin,
+        protection_service: ProtectionService,
+        config: ConfigManager,
+        database,
     ) -> None:
         self.plugin = plugin
         self.protection = protection_service
@@ -62,15 +62,15 @@ class EventHandlers:
 
     @event_handler
     def on_actor_explode(self, event: ActorExplodeEvent) -> None:
-        self.explosion_handler.handle_block_explode(event)
+        self.explosion_handler.handle_actor_explode(event)
 
     @event_handler
     def on_piston_extend(self, event: BlockPistonExtendEvent) -> None:
-        self.explosion_handler.handle_piston_move(event)
+        self.explosion_handler.handle_piston_extend(event)
 
     @event_handler
     def on_piston_retract(self, event: BlockPistonRetractEvent) -> None:
-        self.explosion_handler.handle_piston_move(event)
+        self.explosion_handler.handle_piston_retract(event)
 
     @event_handler
     def on_player_join(self, event: PlayerJoinEvent) -> None:

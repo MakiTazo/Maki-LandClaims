@@ -1,6 +1,7 @@
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
+
 class ClaimData:
 
     def __init__(
@@ -60,12 +61,25 @@ class ClaimData:
     def center_z(self) -> float:
         return (self.z1 + self.z2) / 2.0
 
+    @property
+    def is_expired_now(self) -> bool:
+        if not self.expires_at:
+            return False
+        try:
+            return datetime.utcnow() > datetime.fromisoformat(self.expires_at)
+        except ValueError:
+            return False
+
     def contains_point(self, x: int, z: int) -> bool:
         return self.x1 <= x <= self.x2 and self.z1 <= z <= self.z2
 
     def overlaps(self, other: "ClaimData") -> bool:
-        return not (self.x2 < other.x1 or self.x1 > other.x2 or
-                   self.z2 < other.z1 or self.z1 > other.z2)
+        return not (
+            self.x2 < other.x1
+            or self.x1 > other.x2
+            or self.z2 < other.z1
+            or self.z1 > other.z2
+        )
 
     def distance_to_point(self, x: int, z: int) -> int:
         dx = max(self.x1 - x, 0, x - self.x2)
@@ -73,22 +87,9 @@ class ClaimData:
         return int((dx * dx + dz * dz) ** 0.5)
 
     def distance_to_claim(self, other: "ClaimData") -> int:
-        dx = max(self.x2, other.x1) - min(self.x1, other.x2)
-        dz = max(self.z2, other.z1) - min(self.z1, other.z2)
-        if dx < 0:
-            dx = 0
-        if dz < 0:
-            dz = 0
+        dx = max(self.x1 - other.x2, 0, other.x1 - self.x2)
+        dz = max(self.z1 - other.z2, 0, other.z1 - self.z2)
         return int((dx * dx + dz * dz) ** 0.5)
-
-    def is_expired_now(self) -> bool:
-        if not self.expires_at:
-            return False
-        try:
-            exp_dt = datetime.fromisoformat(self.expires_at)
-            return datetime.utcnow() > exp_dt
-        except Exception:
-            return False
 
     def to_dict(self) -> Dict[str, Any]:
         return {

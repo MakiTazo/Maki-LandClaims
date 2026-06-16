@@ -79,11 +79,9 @@ class LandClaimPlugin(Plugin):
     }
 
     def on_enable(self) -> None:
-        self.logger.info("Loading LandClaim plugin...")
-
         try:
             self.config_manager = ConfigManager(str(self.data_folder))
-            self.logger.info(f"Config loaded from {self.data_folder}")
+            self.logger.info("LandClaim plugin loading...")
         except Exception as e:
             self.logger.error(f"Failed to load config: {e}")
             return
@@ -136,18 +134,19 @@ class LandClaimPlugin(Plugin):
         self.logger.info("LandClaim plugin enabled successfully!")
 
     def on_disable(self) -> None:
-        try:
-            if hasattr(self, "database"):
-                self.database.close()
+        db = getattr(self, "database", None)
+        if db:
+            try:
+                db.close()
                 self.logger.info("Database closed")
-        except Exception as e:
-            self.logger.error(f"Error closing database: {e}")
+            except Exception as e:
+                self.logger.error(f"Error closing database: {e}")
 
     def on_command(
-            self,
-            sender: CommandSender,
-            command: Command,
-            args: List[str],
+        self,
+        sender: CommandSender,
+        command: Command,
+        args: List[str],
     ) -> bool:
         if not hasattr(self, "claim_commands"):
             sender.send_message("§cPlugin not fully loaded yet.")
