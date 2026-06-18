@@ -4,6 +4,7 @@ from endstone_landclaim.models.claim import ClaimData
 from endstone_landclaim.config import ConfigManager
 from endstone_landclaim.services.claim_service import ClaimService
 
+
 class ProtectionService:
 
     def __init__(self, config: ConfigManager, claim_service: ClaimService) -> None:
@@ -80,7 +81,8 @@ class ProtectionService:
         victim_x: int,
         victim_z: int,
         attacker_uuid: str,
-        is_player: bool = False,
+        victim_uuid: str = "",
+        is_pvp: bool = False,
         dimension: str = "overworld",
         is_op: bool = False,
     ) -> Tuple[bool, Optional[str]]:
@@ -91,7 +93,7 @@ class ProtectionService:
         if not claim:
             return True, None
 
-        if is_player:
+        if is_pvp:
             if not self.is_protection_enabled("protect_pvp"):
                 return True, None
             if self._is_allowed_in_claim(claim, attacker_uuid):
@@ -104,8 +106,10 @@ class ProtectionService:
             return True, None
         if self._is_allowed_in_claim(claim, attacker_uuid):
             return True, None
+        if victim_uuid and not self._is_allowed_in_claim(claim, victim_uuid):
+            return True, None
 
-        return True, None
+        return False, None
 
     def can_use_explosives(self, x: int, z: int, dimension: str = "overworld") -> bool:
         return self._is_env_action_allowed("protect_explosions", x, z, dimension)

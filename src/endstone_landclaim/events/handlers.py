@@ -31,7 +31,6 @@ class EventHandlers:
         self.protection = protection_service
         self.config = config
         self.database = database
-
         self.block_handler = BlockEventHandler(protection_service, config)
         self.interact_handler = InteractEventHandler(protection_service, config)
         self.damage_handler = DamageEventHandler(protection_service, config)

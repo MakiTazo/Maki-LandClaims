@@ -89,7 +89,6 @@ class LandClaimPlugin(Plugin):
         try:
             db_path = self.config_manager.get("database.sqlite_path", "landclaim.db")
             self.database = Database(db_path, str(self.data_folder))
-            self.logger.info(f"Database initialized at {db_path}")
         except Exception as e:
             self.logger.error(f"Failed to initialize database: {e}")
             return
@@ -99,7 +98,6 @@ class LandClaimPlugin(Plugin):
             self.spacing_service = SpacingService(self.config_manager)
             self.protection_service = ProtectionService(self.config_manager, self.claim_service)
             self.economy_service = EconomyService(self.config_manager, self)
-            self.logger.info("Services initialized")
         except Exception as e:
             self.logger.error(f"Failed to initialize services: {e}")
             return
@@ -112,7 +110,6 @@ class LandClaimPlugin(Plugin):
                 self.database,
             )
             self.event_handlers.register()
-            self.logger.info("Event handlers registered")
         except Exception as e:
             self.logger.error(f"Failed to register events: {e}")
             return
@@ -126,7 +123,6 @@ class LandClaimPlugin(Plugin):
                 self.protection_service,
                 self.economy_service,
             )
-            self.logger.info("Commands registered")
         except Exception as e:
             self.logger.error(f"Failed to initialize commands: {e}")
             return

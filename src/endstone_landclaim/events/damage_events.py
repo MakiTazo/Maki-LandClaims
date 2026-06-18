@@ -19,12 +19,14 @@ class DamageEventHandler:
             return
 
         is_player_attacker = isinstance(attacker, Player)
+        is_player_victim = isinstance(victim, Player)
 
         can_damage, reason = self.protection.can_damage_entity(
             int(victim.location.x),
             int(victim.location.z),
             attacker_uuid=str(attacker.unique_id) if is_player_attacker else "",
-            is_player=isinstance(victim, Player),
+            victim_uuid=str(victim.unique_id) if is_player_victim else "",
+            is_pvp=is_player_attacker and is_player_victim,
             dimension=self._get_dimension_key(victim),
             is_op=is_player_attacker and attacker.is_op,
         )
