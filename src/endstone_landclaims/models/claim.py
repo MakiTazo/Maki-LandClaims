@@ -14,6 +14,7 @@ class ClaimData:
         z1: int,
         x2: int,
         z2: int,
+        center_y: int = 64,
         dimension: str = "overworld",
         created_at: Optional[str] = None,
         expires_at: Optional[str] = None,
@@ -27,6 +28,7 @@ class ClaimData:
         self.z1 = min(z1, z2)
         self.x2 = max(x1, x2)
         self.z2 = max(z1, z2)
+        self.center_y = center_y
         self.dimension = dimension
         self.created_at = created_at or datetime.utcnow().isoformat()
         self.expires_at = expires_at
@@ -48,6 +50,18 @@ class ClaimData:
     @property
     def depth(self) -> int:
         return abs(self.z2 - self.z1) + 1
+
+    @property
+    def radius(self) -> int:
+        return self.width // 2
+
+    @property
+    def y1(self) -> int:
+        return self.center_y - self.radius
+
+    @property
+    def y2(self) -> int:
+        return self.center_y + self.radius
 
     @property
     def area(self) -> int:
@@ -101,6 +115,7 @@ class ClaimData:
             "z1": self.z1,
             "x2": self.x2,
             "z2": self.z2,
+            "center_y": self.center_y,
             "dimension": self.dimension,
             "created_at": self.created_at,
             "expires_at": self.expires_at,
@@ -121,6 +136,7 @@ class ClaimData:
             z1=data["z1"],
             x2=data["x2"],
             z2=data["z2"],
+            center_y=data.get("center_y", 64),
             dimension=data.get("dimension", "overworld"),
             created_at=data.get("created_at"),
             expires_at=data.get("expires_at"),

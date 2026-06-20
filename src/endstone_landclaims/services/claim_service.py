@@ -3,6 +3,7 @@ from endstone_landclaims.models.claim import ClaimData
 from endstone_landclaims.database import Database
 from endstone_landclaims.config import ConfigManager
 
+
 class ClaimService:
 
     def __init__(self, db: Database, config: ConfigManager) -> None:
@@ -32,6 +33,7 @@ class ClaimService:
             z1=db_claim["z1"],
             x2=db_claim["x2"],
             z2=db_claim["z2"],
+            center_y=db_claim.get("center_y", 64),
             dimension=db_claim["dimension"],
             created_at=db_claim["created_at"],
             expires_at=db_claim["expires_at"],
@@ -47,6 +49,7 @@ class ClaimService:
         z1: int,
         x2: int,
         z2: int,
+        center_y: int = 64,
         dimension: str = "overworld",
     ) -> Optional[ClaimData]:
         claim_id = f"{owner_name}_{len(self.get_player_claims(owner_xuid))}"
@@ -62,6 +65,7 @@ class ClaimService:
                 z1=z1,
                 x2=x2,
                 z2=z2,
+                center_y=center_y,
                 dimension=dimension,
                 expiration_days=expiration_days,
             )
@@ -130,6 +134,7 @@ class ClaimService:
         z1: Optional[int] = None,
         x2: Optional[int] = None,
         z2: Optional[int] = None,
+        center_y: Optional[int] = None,
     ) -> bool:
         try:
             updates: Dict[str, Any] = {}
@@ -142,6 +147,8 @@ class ClaimService:
             if z1 is not None and z2 is not None:
                 updates["z1"] = min(z1, z2)
                 updates["z2"] = max(z1, z2)
+            if center_y is not None:
+                updates["center_y"] = center_y
 
             return self.db.update_claim(claim_id, **updates) if updates else True
         except Exception:

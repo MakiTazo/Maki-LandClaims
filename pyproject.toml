@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.entry-points."endstone"]
-landclaim = "endstone_landclaim.plugin:LandClaimsPlugin"
+landclaims = "endstone_landclaims.plugin:LandClaimsPlugin"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/endstone_landclaims"]

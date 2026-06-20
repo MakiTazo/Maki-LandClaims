@@ -17,7 +17,7 @@ class LandClaimsPlugin(Plugin):
     commands = {
         "claim": {
             "description": "Land claim management",
-            "usages": ["/claim <create|info|list|visualize|delete|add|remove> [args: string]"],
+            "usages": ["/claim <create|info|list|view|delete|add|remove> [args: string]"],
             "permissions": ["landclaim.claim.use"],
         },
         "claimadmin": {

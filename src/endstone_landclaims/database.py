@@ -3,6 +3,7 @@ import os
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 
+
 class Database:
 
     def __init__(self, db_path: str, data_folder: str = "") -> None:
@@ -47,6 +48,7 @@ class Database:
                 z1 INTEGER NOT NULL,
                 x2 INTEGER NOT NULL,
                 z2 INTEGER NOT NULL,
+                center_y INTEGER NOT NULL DEFAULT 64,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_maintained TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 expires_at TIMESTAMP,
@@ -142,6 +144,7 @@ class Database:
         z1: int,
         x2: int,
         z2: int,
+        center_y: int = 64,
         dimension: str = "overworld",
         expiration_days: int = 7,
     ) -> Dict[str, Any]:
@@ -158,10 +161,10 @@ class Database:
         cursor.execute(
             """
             INSERT INTO claims
-            (id, owner_xuid, name, x1, z1, x2, z2, dimension, expires_at, last_maintained)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            (id, owner_xuid, name, x1, z1, x2, z2, center_y, dimension, expires_at, last_maintained)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             """,
-            (claim_id, owner_xuid, name, x1, z1, x2, z2, dimension, expires_at),
+            (claim_id, owner_xuid, name, x1, z1, x2, z2, center_y, dimension, expires_at),
         )
 
         cursor.execute("INSERT INTO claim_permissions (claim_id) VALUES (?)", (claim_id,))
@@ -214,7 +217,7 @@ class Database:
         conn = self._get_connection()
         cursor = conn.cursor()
 
-        allowed_keys = {"name", "x1", "z1", "x2", "z2", "expires_at", "last_maintained", "is_expired"}
+        allowed_keys = {"name", "x1", "z1", "x2", "z2", "center_y", "expires_at", "last_maintained", "is_expired"}
         updates = {k: v for k, v in kwargs.items() if k in allowed_keys}
 
         if not updates:
