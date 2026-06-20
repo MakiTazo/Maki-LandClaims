@@ -6,9 +6,7 @@ from endstone_landclaims.services.spacing_service import SpacingService
 from endstone_landclaims.services.protection_service import ProtectionService
 from endstone_landclaims.services.economy_service import EconomyService
 from endstone_landclaims.config import ConfigManager
-
 class ClaimCommands:
-
     def __init__(
         self,
         plugin,
@@ -42,7 +40,6 @@ class ClaimCommands:
 
         sub = args[0].lower()
         sub_args = args[1:]
-
         if sub == "create":
             return self._handle_claim_create(player, sub_args)
         if sub == "info":
@@ -224,7 +221,6 @@ class ClaimCommands:
         duration_ticks = 200
         particle_type = "minecraft:villager_happy"
         corner_height = 4
-
         def show_particles():
             from endstone.command import CommandSenderWrapper
             silent_sender = CommandSenderWrapper(self.plugin.server.command_sender, on_message=lambda msg: None)
@@ -234,10 +230,8 @@ class ClaimCommands:
                     silent_sender,
                     f"execute as {player.name} at @s run particle {particle_type} {x:.2f} {y:.2f} {z:.2f}",
                 )
-
             x1, x2 = claim.x1, claim.x2 + 1
             z1, z2 = claim.z1, claim.z2 + 1
-
             for x in range(x1, x2 + 1):
                 spawn(x, z1)
                 spawn(x, z2)
