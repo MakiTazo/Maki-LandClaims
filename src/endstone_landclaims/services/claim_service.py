@@ -19,6 +19,10 @@ class ClaimService:
     def get_grace_period_days(self) -> int:
         return int(self.config.get("economy.grace_period_days", 2))
 
+    def get_contribution_radius(self) -> int:
+        default_radius = int(self.config.get("claims.default_radius", 50))
+        return default_radius // 2
+
     def _claim_from_dict(self, db_claim: Dict[str, Any], owner_name: Optional[str] = None) -> ClaimData:
         if owner_name is None:
             owner = self.db.get_player_by_xuid(db_claim["owner_xuid"])
@@ -231,5 +235,53 @@ class ClaimService:
         except Exception:
             return 0
 
+    def get_contributions_count(self, player_xuid: int) -> int:
+        try:
+            return len(self.db.get_contributions_by_player(player_xuid))
+        except Exception:
+            return 0
+
     def player_has_claim_space(self, owner_xuid: int) -> bool:
-        return len(self.get_player_claims(owner_xuid)) < self.get_max_claims_per_player()
+        own_claims = len(self.get_player_claims(owner_xuid))
+        contributions = self.get_contributions_count(owner_xuid)
+        return (own_claims + contributions) < self.get_max_claims_per_player()
+
+    def contribute_to_claim(self, claim_id: str, player_xuid: int) -> Optional[ClaimData]:
+        try:
+            claim = self.get_claim(claim_id)
+            if not claim:
+                return None
+
+            added_radius = self.get_contribution_radius()
+            if added_radius <= 0:
+                return None
+
+            new_radius = claim.radius + added_radius
+
+            success = self.db.update_claim(
+                claim_id,
+                x1=int(claim.center_x - new_radius),
+                z1=int(claim.center_z - new_radius),
+                x2=int(claim.center_x + new_radius),
+                z2=int(claim.center_z + new_radius),
+            )
+
+            if not success:
+                return None
+
+            self.db.add_contribution(claim_id, player_xuid, added_radius)
+            return self.get_claim(claim_id)
+        except Exception:
+            return None
+
+    def release_player_contributions(self, claim_id: str, player_xuid: int) -> int:
+        try:
+            return self.db.remove_contributions(claim_id, player_xuid)
+        except Exception:
+            return 0
+
+    def release_all_player_contributions(self, player_xuid: int) -> List[str]:
+        try:
+            return self.db.remove_all_player_contributions(player_xuid)
+        except Exception:
+            return []

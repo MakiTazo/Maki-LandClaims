@@ -13,6 +13,7 @@ from endstone_landclaims.commands.delete_handler import DeleteHandler
 from endstone_landclaims.commands.basemate_handler import BasemateHandler
 from endstone_landclaims.commands.visualize_handler import VisualizeHandler
 from endstone_landclaims.commands.members_handler import MembersHandler
+from endstone_landclaims.commands.contribute_handler import ContributeHandler
 
 class ClaimCommands:
 
@@ -33,6 +34,7 @@ class ClaimCommands:
         self.basemate_handler = BasemateHandler(plugin, config, claim_service, protection_service)
         self.visualize_handler = VisualizeHandler(plugin, config, claim_service, protection_service)
         self.member_handler = MembersHandler(plugin, config, claim_service, protection_service)
+        self.contribute_handler = ContributeHandler(plugin, config, claim_service, protection_service, economy_service)
 
     def handle_command(
         self,
@@ -46,7 +48,7 @@ class ClaimCommands:
             return True
 
         if not args:
-            player.send_message("§cUsage: /claim <create|info|list|view|delete|add|remove|members>")
+            player.send_message("§cUsage: /claim <create|info|list|view|delete|add|remove|members|contribute>")
             return True
 
         sub = args[0].lower()
@@ -67,6 +69,8 @@ class ClaimCommands:
             return self.visualize_handler.handle(player, sub_args)
         if sub == "members":
             return self.member_handler.handle(player, sub_args)
+        if sub == "contribute":
+            return self.contribute_handler.handle(player, sub_args)
 
         player.send_message(f"§cUnknown subcommand: {sub}")
         return True

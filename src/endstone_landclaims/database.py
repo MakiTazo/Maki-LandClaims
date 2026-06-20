@@ -96,6 +96,18 @@ class Database:
             )
         """)
 
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS contributions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                claim_id TEXT NOT NULL,
+                player_xuid INTEGER NOT NULL,
+                radius_added INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(claim_id) REFERENCES claims(id),
+                FOREIGN KEY(player_xuid) REFERENCES players(xuid)
+            )
+        """)
+
         conn.commit()
 
     def close(self) -> None:
@@ -237,6 +249,7 @@ class Database:
         try:
             cursor.execute("DELETE FROM basemates WHERE claim_id = ?", (claim_id,))
             cursor.execute("DELETE FROM claim_permissions WHERE claim_id = ?", (claim_id,))
+            cursor.execute("DELETE FROM contributions WHERE claim_id = ?", (claim_id,))
             cursor.execute("DELETE FROM claims WHERE id = ?", (claim_id,))
             conn.commit()
             return True
@@ -369,6 +382,47 @@ class Database:
 
         cursor.execute(query, params)
         return [self._row(row) for row in cursor.fetchall()]
+
+    def add_contribution(self, claim_id: str, player_xuid: int, radius_added: int) -> bool:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO contributions (claim_id, player_xuid, radius_added) VALUES (?, ?, ?)",
+            (claim_id, player_xuid, radius_added),
+        )
+        conn.commit()
+        return True
+
+    def get_contributions_by_claim(self, claim_id: str) -> List[Dict[str, Any]]:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM contributions WHERE claim_id = ?", (claim_id,))
+        return [self._row(row) for row in cursor.fetchall()]
+
+    def get_contributions_by_player(self, player_xuid: int) -> List[Dict[str, Any]]:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM contributions WHERE player_xuid = ?", (player_xuid,))
+        return [self._row(row) for row in cursor.fetchall()]
+
+    def remove_contributions(self, claim_id: str, player_xuid: int) -> int:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM contributions WHERE claim_id = ? AND player_xuid = ?",
+            (claim_id, player_xuid),
+        )
+        conn.commit()
+        return cursor.rowcount
+
+    def remove_all_player_contributions(self, player_xuid: int) -> List[str]:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT DISTINCT claim_id FROM contributions WHERE player_xuid = ?", (player_xuid,))
+        claim_ids = [row[0] for row in cursor.fetchall()]
+        cursor.execute("DELETE FROM contributions WHERE player_xuid = ?", (player_xuid,))
+        conn.commit()
+        return claim_ids
 
     def mark_expired_claims(self) -> int:
         conn = self._get_connection()

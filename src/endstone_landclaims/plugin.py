@@ -17,7 +17,7 @@ class LandClaimsPlugin(Plugin):
     commands = {
         "claim": {
             "description": "Land claim management",
-            "usages": ["/claim <create|info|list|view|delete|add|remove|members> [args: string]"],
+            "usages": ["/claim <create|info|list|view|delete|add|remove|members|contribute> [args: string]"],
             "permissions": ["landclaim.claim.use"],
         },
         "claimadmin": {
@@ -77,6 +77,7 @@ class LandClaimsPlugin(Plugin):
             self.event_handlers = EventHandlers(
                 self,
                 self.protection_service,
+                self.claim_service,
                 self.config_manager,
                 self.database,
             )
