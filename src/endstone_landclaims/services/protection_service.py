@@ -39,6 +39,17 @@ class ProtectionService:
         except Exception:
             return False
 
+    def get_clan_members_xuids(self, owner_xuid: int) -> set:
+        if not self.clans_api:
+            return set()
+        try:
+            clan = self.clans_api.db.get_member_clan(owner_xuid)
+            if not clan:
+                return set()
+            return clan.members_xuids
+        except Exception:
+            return set()
+
     def _is_allowed_in_claim(self, claim: ClaimData, player_xuid: int) -> bool:
         if claim.owner_xuid == player_xuid:
             return True
