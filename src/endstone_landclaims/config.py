@@ -54,7 +54,7 @@ class ConfigManager:
                    "# ═══════════════════════════════════════════════════════════════",
         )
 
-        config["claims"]["max_per_player"] = 3
+        config["claims"]["max_per_player"] = 1
         config["claims"].yaml_set_comment_before_after_key(
             "max_per_player",
             before="Maximum number of claims per player",
@@ -66,7 +66,7 @@ class ConfigManager:
             before="Minimum distance (blocks) between claim edges",
         )
 
-        config["claims"]["min_distance_from_spawn"] = 100
+        config["claims"]["min_distance_from_spawn"] = 200
         config["claims"].yaml_set_comment_before_after_key(
             "min_distance_from_spawn",
             before="Minimum distance from spawn to create a claim",
@@ -78,13 +78,13 @@ class ConfigManager:
             before="Spawn center coordinates (X, Z)",
         )
 
-        config["claims"]["spawn_protection_radius"] = 200
+        config["claims"]["spawn_protection_radius"] = 100
         config["claims"].yaml_set_comment_before_after_key(
             "spawn_protection_radius",
             before="Spawn protection radius (no claiming allowed inside)",
         )
 
-        config["claims"]["default_radius"] = 5
+        config["claims"]["default_radius"] = 10
         config["claims"].yaml_set_comment_before_after_key(
             "default_radius",
             before="Default radius (blocks) for new claims from center",
@@ -196,12 +196,6 @@ class ConfigManager:
         config["clans"].yaml_set_comment_before_after_key(
             "enabled",
             before="Enable clan system integration?",
-        )
-
-        config["clans"]["api_plugin_name"] = "clanapi"
-        config["clans"].yaml_set_comment_before_after_key(
-            "api_plugin_name",
-            before="Name of the plugin that provides the clan API",
         )
 
         config["debug"] = CommentedMap()

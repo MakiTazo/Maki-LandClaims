@@ -5,12 +5,12 @@ class PlayerData:
 
     def __init__(
         self,
-        uuid: str,
+        xuid: int,
         name: str,
         created_at: Optional[str] = None,
         last_seen: Optional[str] = None,
     ) -> None:
-        self.uuid = uuid
+        self.xuid = xuid
         self.name = name
         self.created_at = created_at or datetime.utcnow().isoformat()
         self.last_seen = last_seen or datetime.utcnow().isoformat()
@@ -28,7 +28,7 @@ class PlayerData:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "uuid": self.uuid,
+            "xuid": self.xuid,
             "name": self.name,
             "created_at": self.created_at,
             "last_seen": self.last_seen,
@@ -40,7 +40,7 @@ class PlayerData:
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> "PlayerData":
         player = PlayerData(
-            uuid=data["uuid"],
+            xuid=data["xuid"],
             name=data["name"],
             created_at=data.get("created_at"),
             last_seen=data.get("last_seen"),

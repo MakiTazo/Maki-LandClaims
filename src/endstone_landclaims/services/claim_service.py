@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict, Any
-from endstone_landclaim.models.claim import ClaimData
-from endstone_landclaim.database import Database
-from endstone_landclaim.config import ConfigManager
+from endstone_landclaims.models.claim import ClaimData
+from endstone_landclaims.database import Database
+from endstone_landclaims.config import ConfigManager
 
 class ClaimService:
 
@@ -20,12 +20,12 @@ class ClaimService:
 
     def _claim_from_dict(self, db_claim: Dict[str, Any], owner_name: Optional[str] = None) -> ClaimData:
         if owner_name is None:
-            owner = self.db.get_player_by_uuid(db_claim["owner_uuid"])
+            owner = self.db.get_player_by_xuid(db_claim["owner_xuid"])
             owner_name = owner["name"] if owner else "Unknown"
 
         return ClaimData(
             claim_id=db_claim["id"],
-            owner_uuid=db_claim["owner_uuid"],
+            owner_xuid=db_claim["owner_xuid"],
             owner_name=owner_name,
             name=db_claim["name"],
             x1=db_claim["x1"],
@@ -40,7 +40,7 @@ class ClaimService:
 
     def create_claim(
         self,
-        owner_uuid: str,
+        owner_xuid: int,
         owner_name: str,
         claim_name: str,
         x1: int,
@@ -49,13 +49,13 @@ class ClaimService:
         z2: int,
         dimension: str = "overworld",
     ) -> Optional[ClaimData]:
-        claim_id = f"{owner_name}_{len(self.get_player_claims(owner_uuid))}"
+        claim_id = f"{owner_name}_{len(self.get_player_claims(owner_xuid))}"
         expiration_days = self.get_claim_expiration_days()
 
         try:
             db_claim = self.db.create_claim(
                 claim_id=claim_id,
-                owner_uuid=owner_uuid,
+                owner_xuid=owner_xuid,
                 owner_name=owner_name,
                 name=claim_name,
                 x1=x1,
@@ -87,18 +87,18 @@ class ClaimService:
                 }
 
             for bm in self.db.get_basemates(claim_id):
-                claim.basemates.append(bm["player_uuid"])
-                claim.basemate_ranks[bm["player_uuid"]] = bm["rank"]
+                claim.basemates.append(bm["player_xuid"])
+                claim.basemate_ranks[bm["player_xuid"]] = bm["rank"]
 
             return claim
         except Exception:
             return None
 
-    def get_player_claims(self, owner_uuid: str) -> List[ClaimData]:
+    def get_player_claims(self, owner_xuid: int) -> List[ClaimData]:
         try:
             return [
                 self._claim_from_dict(db_claim)
-                for db_claim in self.db.get_claims_by_owner(owner_uuid)
+                for db_claim in self.db.get_claims_by_owner(owner_xuid)
             ]
         except Exception:
             return []
@@ -183,32 +183,32 @@ class ClaimService:
         except Exception:
             return False
 
-    def add_basemate(self, claim_id: str, player_uuid: str, rank: int = 0) -> bool:
+    def add_basemate(self, claim_id: str, player_xuid: int, rank: int = 0) -> bool:
         try:
-            return self.db.add_basemate(claim_id, player_uuid, rank)
+            return self.db.add_basemate(claim_id, player_xuid, rank)
         except Exception:
             return False
 
-    def remove_basemate(self, claim_id: str, player_uuid: str) -> bool:
+    def remove_basemate(self, claim_id: str, player_xuid: int) -> bool:
         try:
-            return self.db.remove_basemate(claim_id, player_uuid)
+            return self.db.remove_basemate(claim_id, player_xuid)
         except Exception:
             return False
 
-    def set_basemate_rank(self, claim_id: str, player_uuid: str, rank: int) -> bool:
+    def set_basemate_rank(self, claim_id: str, player_xuid: int, rank: int) -> bool:
         try:
-            return self.db.set_basemate_rank(claim_id, player_uuid, rank)
+            return self.db.set_basemate_rank(claim_id, player_xuid, rank)
         except Exception:
             return False
 
-    def get_basemate_rank(self, claim_id: str, player_uuid: str) -> Optional[int]:
+    def get_basemate_rank(self, claim_id: str, player_xuid: int) -> Optional[int]:
         try:
-            return self.db.get_basemate_rank(claim_id, player_uuid)
+            return self.db.get_basemate_rank(claim_id, player_xuid)
         except Exception:
             return None
 
-    def is_basemate(self, claim_id: str, player_uuid: str) -> bool:
-        return self.get_basemate_rank(claim_id, player_uuid) is not None
+    def is_basemate(self, claim_id: str, player_xuid: int) -> bool:
+        return self.get_basemate_rank(claim_id, player_xuid) is not None
 
     def mark_expired_claims(self) -> int:
         try:
@@ -224,5 +224,5 @@ class ClaimService:
         except Exception:
             return 0
 
-    def player_has_claim_space(self, owner_uuid: str) -> bool:
-        return len(self.get_player_claims(owner_uuid)) < self.get_max_claims_per_player()
+    def player_has_claim_space(self, owner_xuid: int) -> bool:
+        return len(self.get_player_claims(owner_xuid)) < self.get_max_claims_per_player()

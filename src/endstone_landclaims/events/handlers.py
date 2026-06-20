@@ -11,12 +11,12 @@ from endstone.event import (
     BlockPistonExtendEvent,
     BlockPistonRetractEvent,
 )
-from endstone_landclaim.services.protection_service import ProtectionService
-from endstone_landclaim.config import ConfigManager
-from endstone_landclaim.events.block_events import BlockEventHandler
-from endstone_landclaim.events.interact_events import InteractEventHandler
-from endstone_landclaim.events.damage_events import DamageEventHandler
-from endstone_landclaim.events.explosion_events import ExplosionEventHandler
+from endstone_landclaims.services.protection_service import ProtectionService
+from endstone_landclaims.config import ConfigManager
+from endstone_landclaims.events.block_events import BlockEventHandler
+from endstone_landclaims.events.interact_events import InteractEventHandler
+from endstone_landclaims.events.damage_events import DamageEventHandler
+from endstone_landclaims.events.explosion_events import ExplosionEventHandler
 
 class EventHandlers:
 
@@ -73,4 +73,4 @@ class EventHandlers:
 
     @event_handler
     def on_player_join(self, event: PlayerJoinEvent) -> None:
-        self.database.get_or_create_player(str(event.player.unique_id), event.player.name)
+        self.database.get_or_create_player(int(event.player.xuid), event.player.name)

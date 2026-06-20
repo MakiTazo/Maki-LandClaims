@@ -1,7 +1,7 @@
 from typing import List, Tuple, Optional
 from math import hypot
-from endstone_landclaim.models.claim import ClaimData
-from endstone_landclaim.config import ConfigManager
+from endstone_landclaims.models.claim import ClaimData
+from endstone_landclaims.config import ConfigManager
 
 class SpacingService:
 
@@ -58,7 +58,7 @@ class SpacingService:
         for r in range(max_radius, 0, -10):
             test_claim = ClaimData(
                 claim_id="test",
-                owner_uuid="test",
+                owner_xuid=0,
                 owner_name=owner_name,
                 name="test",
                 x1=x - r,

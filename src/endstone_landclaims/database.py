@@ -3,7 +3,6 @@ import os
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 
-
 class Database:
 
     def __init__(self, db_path: str, data_folder: str = "") -> None:
@@ -32,7 +31,7 @@ class Database:
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS players (
-                uuid TEXT PRIMARY KEY,
+                xuid INTEGER PRIMARY KEY,
                 name TEXT UNIQUE NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -42,7 +41,7 @@ class Database:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS claims (
                 id TEXT PRIMARY KEY,
-                owner_uuid TEXT NOT NULL,
+                owner_xuid INTEGER NOT NULL,
                 name TEXT NOT NULL,
                 x1 INTEGER NOT NULL,
                 z1 INTEGER NOT NULL,
@@ -53,7 +52,7 @@ class Database:
                 expires_at TIMESTAMP,
                 is_expired INTEGER DEFAULT 0,
                 dimension TEXT DEFAULT 'overworld',
-                FOREIGN KEY(owner_uuid) REFERENCES players(uuid)
+                FOREIGN KEY(owner_xuid) REFERENCES players(xuid)
             )
         """)
 
@@ -61,12 +60,12 @@ class Database:
             CREATE TABLE IF NOT EXISTS basemates (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 claim_id TEXT NOT NULL,
-                player_uuid TEXT NOT NULL,
+                player_xuid INTEGER NOT NULL,
                 rank INTEGER DEFAULT 0,
                 added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(claim_id) REFERENCES claims(id),
-                FOREIGN KEY(player_uuid) REFERENCES players(uuid),
-                UNIQUE(claim_id, player_uuid)
+                FOREIGN KEY(player_xuid) REFERENCES players(xuid),
+                UNIQUE(claim_id, player_xuid)
             )
         """)
 
@@ -85,13 +84,13 @@ class Database:
             CREATE TABLE IF NOT EXISTS transactions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 claim_id TEXT,
-                player_uuid TEXT NOT NULL,
+                player_xuid INTEGER NOT NULL,
                 transaction_type TEXT NOT NULL,
                 amount REAL NOT NULL,
                 reason TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(claim_id) REFERENCES claims(id),
-                FOREIGN KEY(player_uuid) REFERENCES players(uuid)
+                FOREIGN KEY(player_xuid) REFERENCES players(xuid)
             )
         """)
 
@@ -102,27 +101,27 @@ class Database:
             self.conn.close()
             self.conn = None
 
-    def get_or_create_player(self, uuid: str, name: str) -> Dict[str, Any]:
+    def get_or_create_player(self, xuid: int, name: str) -> Dict[str, Any]:
         conn = self._get_connection()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT * FROM players WHERE uuid = ?", (uuid,))
+        cursor.execute("SELECT * FROM players WHERE xuid = ?", (xuid,))
         row = cursor.fetchone()
 
         if row:
-            cursor.execute("UPDATE players SET last_seen = CURRENT_TIMESTAMP WHERE uuid = ?", (uuid,))
+            cursor.execute("UPDATE players SET last_seen = CURRENT_TIMESTAMP WHERE xuid = ?", (xuid,))
             conn.commit()
             return self._row(row)
 
-        cursor.execute("INSERT INTO players (uuid, name) VALUES (?, ?)", (uuid, name))
+        cursor.execute("INSERT INTO players (xuid, name) VALUES (?, ?)", (xuid, name))
         conn.commit()
-        cursor.execute("SELECT * FROM players WHERE uuid = ?", (uuid,))
+        cursor.execute("SELECT * FROM players WHERE xuid = ?", (xuid,))
         return self._row(cursor.fetchone())
 
-    def get_player_by_uuid(self, uuid: str) -> Optional[Dict[str, Any]]:
+    def get_player_by_xuid(self, xuid: int) -> Optional[Dict[str, Any]]:
         conn = self._get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM players WHERE uuid = ?", (uuid,))
+        cursor.execute("SELECT * FROM players WHERE xuid = ?", (xuid,))
         row = cursor.fetchone()
         return self._row(row) if row else None
 
@@ -136,7 +135,7 @@ class Database:
     def create_claim(
         self,
         claim_id: str,
-        owner_uuid: str,
+        owner_xuid: int,
         owner_name: str,
         name: str,
         x1: int,
@@ -150,8 +149,8 @@ class Database:
         cursor = conn.cursor()
 
         cursor.execute(
-            "INSERT OR IGNORE INTO players (uuid, name) VALUES (?, ?)",
-            (owner_uuid, owner_name),
+            "INSERT OR IGNORE INTO players (xuid, name) VALUES (?, ?)",
+            (owner_xuid, owner_name),
         )
 
         expires_at = (datetime.utcnow() + timedelta(days=expiration_days)).isoformat()
@@ -159,10 +158,10 @@ class Database:
         cursor.execute(
             """
             INSERT INTO claims
-            (id, owner_uuid, name, x1, z1, x2, z2, dimension, expires_at, last_maintained)
+            (id, owner_xuid, name, x1, z1, x2, z2, dimension, expires_at, last_maintained)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             """,
-            (claim_id, owner_uuid, name, x1, z1, x2, z2, dimension, expires_at),
+            (claim_id, owner_xuid, name, x1, z1, x2, z2, dimension, expires_at),
         )
 
         cursor.execute("INSERT INTO claim_permissions (claim_id) VALUES (?)", (claim_id,))
@@ -178,12 +177,12 @@ class Database:
         row = cursor.fetchone()
         return self._row(row) if row else None
 
-    def get_claims_by_owner(self, owner_uuid: str) -> List[Dict[str, Any]]:
+    def get_claims_by_owner(self, owner_xuid: int) -> List[Dict[str, Any]]:
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT * FROM claims WHERE owner_uuid = ? AND is_expired = 0",
-            (owner_uuid,),
+            "SELECT * FROM claims WHERE owner_xuid = ? AND is_expired = 0",
+            (owner_xuid,),
         )
         return [self._row(row) for row in cursor.fetchall()]
 
@@ -241,25 +240,25 @@ class Database:
         except Exception:
             return False
 
-    def add_basemate(self, claim_id: str, player_uuid: str, rank: int = 0) -> bool:
+    def add_basemate(self, claim_id: str, player_xuid: int, rank: int = 0) -> bool:
         conn = self._get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute(
-                "INSERT INTO basemates (claim_id, player_uuid, rank) VALUES (?, ?, ?)",
-                (claim_id, player_uuid, rank),
+                "INSERT INTO basemates (claim_id, player_xuid, rank) VALUES (?, ?, ?)",
+                (claim_id, player_xuid, rank),
             )
             conn.commit()
             return True
         except sqlite3.IntegrityError:
             return False
 
-    def remove_basemate(self, claim_id: str, player_uuid: str) -> bool:
+    def remove_basemate(self, claim_id: str, player_xuid: int) -> bool:
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "DELETE FROM basemates WHERE claim_id = ? AND player_uuid = ?",
-            (claim_id, player_uuid),
+            "DELETE FROM basemates WHERE claim_id = ? AND player_xuid = ?",
+            (claim_id, player_xuid),
         )
         conn.commit()
         return cursor.rowcount > 0
@@ -270,29 +269,29 @@ class Database:
         cursor.execute(
             """
             SELECT bm.*, p.name FROM basemates bm
-            JOIN players p ON bm.player_uuid = p.uuid
+            JOIN players p ON bm.player_xuid = p.xuid
             WHERE bm.claim_id = ?
             """,
             (claim_id,),
         )
         return [self._row(row) for row in cursor.fetchall()]
 
-    def get_basemate_rank(self, claim_id: str, player_uuid: str) -> Optional[int]:
+    def get_basemate_rank(self, claim_id: str, player_xuid: int) -> Optional[int]:
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT rank FROM basemates WHERE claim_id = ? AND player_uuid = ?",
-            (claim_id, player_uuid),
+            "SELECT rank FROM basemates WHERE claim_id = ? AND player_xuid = ?",
+            (claim_id, player_xuid),
         )
         row = cursor.fetchone()
         return int(row[0]) if row else None
 
-    def set_basemate_rank(self, claim_id: str, player_uuid: str, rank: int) -> bool:
+    def set_basemate_rank(self, claim_id: str, player_xuid: int, rank: int) -> bool:
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE basemates SET rank = ? WHERE claim_id = ? AND player_uuid = ?",
-            (rank, claim_id, player_uuid),
+            "UPDATE basemates SET rank = ? WHERE claim_id = ? AND player_xuid = ?",
+            (rank, claim_id, player_xuid),
         )
         conn.commit()
         return cursor.rowcount > 0
@@ -324,7 +323,7 @@ class Database:
 
     def add_transaction(
         self,
-        player_uuid: str,
+        player_xuid: int,
         transaction_type: str,
         amount: float,
         claim_id: Optional[str] = None,
@@ -335,17 +334,17 @@ class Database:
         cursor.execute(
             """
             INSERT INTO transactions
-            (player_uuid, transaction_type, amount, claim_id, reason)
+            (player_xuid, transaction_type, amount, claim_id, reason)
             VALUES (?, ?, ?, ?, ?)
             """,
-            (player_uuid, transaction_type, amount, claim_id, reason),
+            (player_xuid, transaction_type, amount, claim_id, reason),
         )
         conn.commit()
         return cursor.lastrowid
 
     def get_transactions(
         self,
-        player_uuid: Optional[str] = None,
+        player_xuid: Optional[int] = None,
         claim_id: Optional[str] = None,
         limit: int = 100,
     ) -> List[Dict[str, Any]]:
@@ -355,9 +354,9 @@ class Database:
         query = "SELECT * FROM transactions WHERE 1=1"
         params: List[Any] = []
 
-        if player_uuid:
-            query += " AND player_uuid = ?"
-            params.append(player_uuid)
+        if player_xuid:
+            query += " AND player_xuid = ?"
+            params.append(player_xuid)
         if claim_id:
             query += " AND claim_id = ?"
             params.append(claim_id)

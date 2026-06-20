@@ -1,31 +1,36 @@
-from endstone.event import PlayerInteractEvent
-from endstone_landclaim.services.protection_service import ProtectionService
-from endstone_landclaim.config import ConfigManager
+from endstone.event import BlockPlaceEvent, BlockBreakEvent
+from endstone_landclaims.services.protection_service import ProtectionService
+from endstone_landclaims.config import ConfigManager
 
-class InteractEventHandler:
+class BlockEventHandler:
 
     def __init__(self, protection_service: ProtectionService, config: ConfigManager) -> None:
         self.protection = protection_service
         self.config = config
 
-    def handle_player_interact(self, event: PlayerInteractEvent) -> None:
-        if not self.config.get("protection.protect_interact", True):
+    def handle_block_place(self, event: BlockPlaceEvent) -> None:
+        if not self.config.get("protection.protect_block_place", True):
             return
+        self._handle_block_event(event)
 
-        if not event.has_block:
+    def handle_block_break(self, event: BlockBreakEvent) -> None:
+        if not self.config.get("protection.protect_block_break", True):
             return
+        self._handle_block_event(event)
 
+    def _handle_block_event(self, event) -> None:
         player = event.player
         block = event.block
-        can_interact, reason = self.protection.can_interact(
+
+        can_build, reason = self.protection.can_build(
             block.x,
             block.z,
-            player_uuid=str(player.unique_id),
+            player_xuid=int(player.xuid),
             dimension=self._get_dimension_key(block),
             is_op=player.is_op,
         )
 
-        if not can_interact:
+        if not can_build:
             event.is_cancelled = True
             player.send_message(f"§c{reason}")
 

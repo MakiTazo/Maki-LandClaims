@@ -7,7 +7,7 @@ class ClaimData:
     def __init__(
         self,
         claim_id: str,
-        owner_uuid: str,
+        owner_xuid: int,
         owner_name: str,
         name: str,
         x1: int,
@@ -20,7 +20,7 @@ class ClaimData:
         is_expired: bool = False,
     ) -> None:
         self.id = claim_id
-        self.owner_uuid = owner_uuid
+        self.owner_xuid = owner_xuid
         self.owner_name = owner_name
         self.name = name
         self.x1 = min(x1, x2)
@@ -32,8 +32,8 @@ class ClaimData:
         self.expires_at = expires_at
         self.is_expired = is_expired
 
-        self.basemates: List[str] = []
-        self.basemate_ranks: Dict[str, int] = {}
+        self.basemates: List[int] = []
+        self.basemate_ranks: Dict[int, int] = {}
         self.permissions: Dict[str, bool] = {
             "allow_build": False,
             "allow_interact": False,
@@ -94,7 +94,7 @@ class ClaimData:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
-            "owner_uuid": self.owner_uuid,
+            "owner_xuid": self.owner_xuid,
             "owner_name": self.owner_name,
             "name": self.name,
             "x1": self.x1,
@@ -114,7 +114,7 @@ class ClaimData:
     def from_dict(data: Dict[str, Any]) -> "ClaimData":
         claim = ClaimData(
             claim_id=data["id"],
-            owner_uuid=data["owner_uuid"],
+            owner_xuid=data["owner_xuid"],
             owner_name=data.get("owner_name", "Unknown"),
             name=data["name"],
             x1=data["x1"],

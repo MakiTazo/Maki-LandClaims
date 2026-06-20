@@ -1,5 +1,5 @@
 from typing import Any
-from endstone_landclaim.config import ConfigManager
+from endstone_landclaims.config import ConfigManager
 
 class EconomyService:
 

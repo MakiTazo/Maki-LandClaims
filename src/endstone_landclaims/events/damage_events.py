@@ -1,7 +1,7 @@
 from endstone import Player
 from endstone.event import ActorDamageEvent
-from endstone_landclaim.services.protection_service import ProtectionService
-from endstone_landclaim.config import ConfigManager
+from endstone_landclaims.services.protection_service import ProtectionService
+from endstone_landclaims.config import ConfigManager
 
 class DamageEventHandler:
 
@@ -20,12 +20,11 @@ class DamageEventHandler:
 
         is_player_attacker = isinstance(attacker, Player)
         is_player_victim = isinstance(victim, Player)
-
         can_damage, reason = self.protection.can_damage_entity(
             int(victim.location.x),
             int(victim.location.z),
-            attacker_uuid=str(attacker.unique_id) if is_player_attacker else "",
-            victim_uuid=str(victim.unique_id) if is_player_victim else "",
+            attacker_xuid=int(attacker.xuid) if is_player_attacker else 0,
+            victim_xuid=int(victim.xuid) if is_player_victim else 0,
             is_pvp=is_player_attacker and is_player_victim,
             dimension=self._get_dimension_key(victim),
             is_op=is_player_attacker and attacker.is_op,

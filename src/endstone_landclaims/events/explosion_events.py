@@ -4,8 +4,8 @@ from endstone.event import (
     BlockPistonExtendEvent,
     BlockPistonRetractEvent,
 )
-from endstone_landclaim.services.protection_service import ProtectionService
-from endstone_landclaim.config import ConfigManager
+from endstone_landclaims.services.protection_service import ProtectionService
+from endstone_landclaims.config import ConfigManager
 
 class ExplosionEventHandler:
 

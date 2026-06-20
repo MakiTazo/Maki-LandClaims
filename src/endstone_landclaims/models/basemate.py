@@ -17,13 +17,13 @@ class BasemateData:
 
     def __init__(
         self,
-        player_uuid: str,
+        player_xuid: int,
         player_name: str,
         claim_id: str,
         rank: Union[int, BasemateRank] = BasemateRank.MEMBER,
         added_at: Optional[str] = None,
     ) -> None:
-        self.player_uuid = player_uuid
+        self.player_xuid = player_xuid
         self.player_name = player_name
         self.claim_id = claim_id
         self.rank = BasemateRank(rank)
@@ -43,7 +43,7 @@ class BasemateData:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "player_uuid": self.player_uuid,
+            "player_xuid": self.player_xuid,
             "player_name": self.player_name,
             "claim_id": self.claim_id,
             "rank": int(self.rank),
@@ -53,7 +53,7 @@ class BasemateData:
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> "BasemateData":
         return BasemateData(
-            player_uuid=data["player_uuid"],
+            player_xuid=data["player_xuid"],
             player_name=data["player_name"],
             claim_id=data["claim_id"],
             rank=data.get("rank", BasemateRank.MEMBER),
