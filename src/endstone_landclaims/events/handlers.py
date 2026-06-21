@@ -88,7 +88,8 @@ class EventHandlers:
 
     @event_handler
     def on_player_join(self, event: PlayerJoinEvent) -> None:
-        self.database.get_or_create_player(int(event.player.xuid), event.player.name)
+        default_slots = self.claim_service.get_default_claim_slots()
+        self.database.get_or_create_player(int(event.player.xuid), event.player.name, default_slots)
 
     if clan_event_handler:
         @clan_event_handler

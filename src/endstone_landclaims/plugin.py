@@ -19,13 +19,13 @@ class LandClaimsPlugin(Plugin):
         "claim": {
             "description": "Land claim management",
             "usages": [
-                "/claim create [args: string]",
+                "/claim create [name: string]",
                 "/claim info",
                 "/claim list",
                 "/claim view",
-                "/claim delete <args: string>",
-                "/claim invite <args: string>",
-                "/claim kick <args: string>",
+                "/claim delete <name: string>",
+                "/claim invite <player: player>",
+                "/claim kick <player: player>",
                 "/claim contribute",
                 "/claim settings",
             ],
@@ -33,7 +33,10 @@ class LandClaimsPlugin(Plugin):
         },
         "claimadmin": {
             "description": "Admin commands for LandClaim",
-            "usages": ["/claimadmin <reload>"],
+            "usages": [
+                "/claimadmin reload",
+                "/claimadmin addclaim <player: string> <count: int>",
+            ],
             "permissions": ["landclaim.admin"],
         },
     }
@@ -110,7 +113,7 @@ class LandClaimsPlugin(Plugin):
             return
 
         try:
-            self.admin_commands = AdminCommands(self.config_manager)
+            self.admin_commands = AdminCommands(self.config_manager, self.database, self)
         except Exception as e:
             self.logger.error(f"Failed to initialize admin commands: {e}")
             return

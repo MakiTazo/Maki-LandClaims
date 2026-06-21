@@ -76,11 +76,11 @@ class SettingsHandler(BaseHandler):
         if not claim:
             player.send_message("§cClaim not found.")
             return
-
-        if not claim.basemates:
-            player.send_message("§7This claim has no basemates yet.")
+        clan_members = self.protection.get_clan_members_xuids(claim.owner_xuid)
+        clan_members -= {claim.owner_xuid, *claim.basemates}
+        if not claim.basemates and not clan_members:
+            player.send_message("§7This claim has no members yet.")
             return
-
         form = ActionForm(title="Members", content="Select a member to view details")
         for xuid in claim.basemates:
             name = self._resolve_name(xuid)
@@ -88,6 +88,16 @@ class SettingsHandler(BaseHandler):
             rank_label = "Manager" if rank >= 1 else "Member"
             form.add_button(f"{name}\n§7{rank_label}",
                             on_click=lambda p, x=xuid, n=name: self._show_member_detail(p, claim_id, x, n))
+        for xuid in clan_members:
+            name = self._resolve_name(xuid)
+            form.add_button(f"{name}\n§7Clan Member",
+                            on_click=lambda p, x=xuid, n=name: self._show_clan_member_detail(p, n))
+        player.send_form(form)
+
+    def _show_clan_member_detail(self, player: Player, target_name: str) -> None:
+        content = f"§7Name: §e{target_name}\n§7Type: §eClan Member\n§7This player has access via clan membership and cannot be kicked here."
+        form = ActionForm(title=target_name, content=content)
+        form.add_button("Back", on_click=lambda p: player.send_message("§7Use /claim settings to return."))
         player.send_form(form)
 
     def _show_member_detail(self, player: Player, claim_id: str, target_xuid: int, target_name: str) -> None:

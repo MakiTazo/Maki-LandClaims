@@ -113,38 +113,40 @@ class ProtectionService:
         return False, f"Cannot interact in {claim.name} (owner: {claim.owner_name})"
 
     def can_damage_entity(
-        self,
-        victim_x: int,
-        victim_z: int,
-        attacker_xuid: int = 0,
-        victim_xuid: int = 0,
-        is_pvp: bool = False,
-        dimension: str = "overworld",
-        is_op: bool = False,
+            self,
+            victim_x: int,
+            victim_z: int,
+            attacker_xuid: int = 0,
+            victim_xuid: int = 0,
+            is_pvp: bool = False,
+            dimension: str = "overworld",
+            is_op: bool = False,
     ) -> Tuple[bool, Optional[str]]:
         if is_op:
             return True, None
-
         claim = self._get_claim(victim_x, victim_z, dimension)
         if not claim:
             return True, None
-
         if is_pvp:
+            attacker_is_member = self._is_allowed_in_claim(claim, attacker_xuid)
+            victim_is_member = self._is_allowed_in_claim(claim, victim_xuid)
+            if attacker_is_member and victim_is_member:
+                if claim.permissions.get("allow_pvp", False):
+                    return True, None
+                return False, f"PvP between members is disabled in {claim.name}"
             if not self.is_protection_enabled("protect_pvp"):
                 return True, None
-            if self._is_allowed_in_claim(claim, attacker_xuid):
+            if attacker_is_member:
                 return True, None
             if claim.permissions.get("allow_pvp", False):
                 return True, None
             return False, f"PvP is disabled in {claim.name}"
-
         if not self.is_protection_enabled("protect_passive_mobs"):
             return True, None
         if self._is_allowed_in_claim(claim, attacker_xuid):
             return True, None
         if victim_xuid and not self._is_allowed_in_claim(claim, victim_xuid):
             return True, None
-
         return False, None
 
     def can_use_explosives(self, x: int, z: int, dimension: str = "overworld") -> bool:

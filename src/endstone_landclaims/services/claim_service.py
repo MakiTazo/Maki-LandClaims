@@ -10,8 +10,11 @@ class ClaimService:
         self.db = db
         self.config = config
 
-    def get_max_claims_per_player(self) -> int:
-        return int(self.config.get("claims.max_per_player", 3))
+    def get_max_claims_per_player(self, xuid: int) -> int:
+        return self.db.get_claim_slots(xuid)
+
+    def get_default_claim_slots(self) -> int:
+        return int(self.config.get("claims.default_claims_count", 1))
 
     def get_claim_expiration_days(self) -> int:
         return int(self.config.get("economy.claim_expiration_days", 7))
@@ -269,7 +272,7 @@ class ClaimService:
     def player_has_claim_space(self, owner_xuid: int) -> bool:
         own_claims = len(self.get_player_claims(owner_xuid))
         contributions = self.get_contributions_count(owner_xuid)
-        return (own_claims + contributions) < self.get_max_claims_per_player()
+        return (own_claims + contributions) < self.get_max_claims_per_player(owner_xuid)
 
     def contribute_to_claim(self, claim_id: str, player_xuid: int) -> Optional[ClaimData]:
         try:

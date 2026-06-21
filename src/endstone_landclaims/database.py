@@ -3,7 +3,6 @@ import os
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 
-
 class Database:
 
     def __init__(self, db_path: str, data_folder: str = "") -> None:
@@ -34,6 +33,7 @@ class Database:
             CREATE TABLE IF NOT EXISTS players (
                 xuid INTEGER PRIMARY KEY,
                 name TEXT UNIQUE NOT NULL,
+                claim_slots INTEGER NOT NULL DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -115,7 +115,7 @@ class Database:
             self.conn.close()
             self.conn = None
 
-    def get_or_create_player(self, xuid: int, name: str) -> Dict[str, Any]:
+    def get_or_create_player(self, xuid: int, name: str, default_claim_slots: int = 3) -> Dict[str, Any]:
         conn = self._get_connection()
         cursor = conn.cursor()
 
@@ -127,7 +127,10 @@ class Database:
             conn.commit()
             return self._row(row)
 
-        cursor.execute("INSERT INTO players (xuid, name) VALUES (?, ?)", (xuid, name))
+        cursor.execute(
+            "INSERT INTO players (xuid, name, claim_slots) VALUES (?, ?, ?)",
+            (xuid, name, default_claim_slots),
+        )
         conn.commit()
         cursor.execute("SELECT * FROM players WHERE xuid = ?", (xuid,))
         return self._row(cursor.fetchone())
@@ -145,6 +148,23 @@ class Database:
         cursor.execute("SELECT * FROM players WHERE name = ?", (name,))
         row = cursor.fetchone()
         return self._row(row) if row else None
+
+    def get_claim_slots(self, xuid: int) -> int:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT claim_slots FROM players WHERE xuid = ?", (xuid,))
+        row = cursor.fetchone()
+        return int(row[0]) if row else 0
+
+    def add_claim_slots(self, xuid: int, amount: int) -> bool:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE players SET claim_slots = claim_slots + ? WHERE xuid = ?",
+            (amount, xuid),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
 
     def create_claim(
         self,

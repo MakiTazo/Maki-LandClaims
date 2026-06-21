@@ -54,10 +54,10 @@ class ConfigManager:
                    "# ═══════════════════════════════════════════════════════════════",
         )
 
-        config["claims"]["max_per_player"] = 1
+        config["claims"]["default_claims_count"] = 1
         config["claims"].yaml_set_comment_before_after_key(
-            "max_per_player",
-            before="Maximum number of claims per player",
+            "default_claims_count",
+            before="Default number of claim slots granted to new players",
         )
 
         config["claims"]["min_distance_between_claims"] = 50
