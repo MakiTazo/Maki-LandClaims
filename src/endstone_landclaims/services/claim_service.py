@@ -158,6 +158,31 @@ class ClaimService:
         except Exception:
             return False
 
+    def recenter_claim(self, claim_id: str, new_center_x: int, new_center_y: int, new_center_z: int) -> Optional[
+        ClaimData]:
+        try:
+            claim = self.get_claim(claim_id)
+            if not claim:
+                return None
+
+            radius = claim.radius
+
+            success = self.db.update_claim(
+                claim_id,
+                x1=new_center_x - radius,
+                z1=new_center_z - radius,
+                x2=new_center_x + radius,
+                z2=new_center_z + radius,
+                center_y=new_center_y,
+            )
+
+            if not success:
+                return None
+
+            return self.get_claim(claim_id)
+        except Exception:
+            return None
+
     def delete_claim(self, claim_id: str) -> bool:
         try:
             return self.db.delete_claim(claim_id)

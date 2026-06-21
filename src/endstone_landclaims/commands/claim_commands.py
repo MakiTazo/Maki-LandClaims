@@ -12,11 +12,10 @@ from endstone_landclaims.commands.list_handler import ListHandler
 from endstone_landclaims.commands.delete_handler import DeleteHandler
 from endstone_landclaims.commands.basemate_handler import BasemateHandler
 from endstone_landclaims.commands.visualize_handler import VisualizeHandler
-from endstone_landclaims.commands.members_handler import MembersHandler
 from endstone_landclaims.commands.contribute_handler import ContributeHandler
+from endstone_landclaims.commands.settings_handler import SettingsHandler
 
 class ClaimCommands:
-
     def __init__(
         self,
         plugin,
@@ -33,14 +32,14 @@ class ClaimCommands:
         self.delete_handler = DeleteHandler(plugin, config, claim_service, protection_service)
         self.basemate_handler = BasemateHandler(plugin, config, claim_service, protection_service)
         self.visualize_handler = VisualizeHandler(plugin, config, claim_service, protection_service)
-        self.member_handler = MembersHandler(plugin, config, claim_service, protection_service)
         self.contribute_handler = ContributeHandler(plugin, config, claim_service, protection_service, economy_service)
+        self.settings_handler = SettingsHandler(plugin, config, claim_service, protection_service, spacing_service)
 
     def handle_command(
-        self,
-        sender: CommandSender,
-        command: Command,
-        args: List[str],
+            self,
+            sender: CommandSender,
+            command: Command,
+            args: List[str],
     ) -> bool:
         player = self._as_player(sender)
         if not player:
@@ -48,11 +47,12 @@ class ClaimCommands:
             return True
 
         if not args:
-            player.send_message("§cUsage: /claim <create|info|list|view|delete|add|remove|members|contribute>")
+            player.send_message("§cUsage: /claim <create|info|list|view|delete|invite|kick|contribute|settings>")
             return True
 
         sub = args[0].lower()
         sub_args = args[1:]
+
         if sub == "create":
             return self.create_handler.handle(player, sub_args)
         if sub == "info":
@@ -61,16 +61,16 @@ class ClaimCommands:
             return self.list_handler.handle(player, sub_args)
         if sub == "delete":
             return self.delete_handler.handle(player, sub_args)
-        if sub == "add":
+        if sub == "invite":
             return self.basemate_handler.handle_add(player, sub_args)
-        if sub == "remove":
+        if sub == "kick":
             return self.basemate_handler.handle_remove(player, sub_args)
         if sub == "view":
             return self.visualize_handler.handle(player, sub_args)
-        if sub == "members":
-            return self.member_handler.handle(player, sub_args)
         if sub == "contribute":
             return self.contribute_handler.handle(player, sub_args)
+        if sub == "settings":
+            return self.settings_handler.handle(player, sub_args)
 
         player.send_message(f"§cUnknown subcommand: {sub}")
         return True

@@ -10,6 +10,7 @@ from endstone_landclaims.services.protection_service import ProtectionService
 from endstone_landclaims.services.economy_service import EconomyService
 from endstone_landclaims.events.handlers import EventHandlers
 from endstone_landclaims.commands.claim_commands import ClaimCommands
+from endstone_landclaims.commands.admin_commands import AdminCommands
 
 class LandClaimsPlugin(Plugin):
     api_version = "0.11"
@@ -17,7 +18,17 @@ class LandClaimsPlugin(Plugin):
     commands = {
         "claim": {
             "description": "Land claim management",
-            "usages": ["/claim <create|info|list|view|delete|add|remove|members|contribute> [args: string]"],
+            "usages": [
+                "/claim create [args: string]",
+                "/claim info",
+                "/claim list",
+                "/claim view",
+                "/claim delete <args: string>",
+                "/claim invite <args: string>",
+                "/claim kick <args: string>",
+                "/claim contribute",
+                "/claim settings",
+            ],
             "permissions": ["landclaim.claim.use"],
         },
         "claimadmin": {
@@ -41,7 +52,6 @@ class LandClaimsPlugin(Plugin):
     def on_enable(self) -> None:
         try:
             self.config_manager = ConfigManager(str(self.data_folder))
-            self.logger.info("LandClaims plugin loading...")
         except Exception as e:
             self.logger.error(f"Failed to load config: {e}")
             return
@@ -99,6 +109,11 @@ class LandClaimsPlugin(Plugin):
             self.logger.error(f"Failed to initialize commands: {e}")
             return
 
+        try:
+            self.admin_commands = AdminCommands(self.config_manager)
+        except Exception as e:
+            self.logger.error(f"Failed to initialize admin commands: {e}")
+            return
         self.logger.info("LandClaim plugin enabled successfully!")
 
     def on_disable(self) -> None:
@@ -119,26 +134,6 @@ class LandClaimsPlugin(Plugin):
         if not hasattr(self, "claim_commands"):
             sender.send_message("§cPlugin not fully loaded yet.")
             return True
-
         if command.name == "claimadmin":
-            return self._handle_admin_command(sender, args)
-
+            return self.admin_commands.handle_command(sender, args)
         return self.claim_commands.handle_command(sender, command, args)
-
-    def _handle_admin_command(self, sender: CommandSender, args: List[str]) -> bool:
-        if not args:
-            sender.send_message("§cUsage: /claimadmin <reload>")
-            return True
-
-        sub = args[0].lower()
-
-        if sub == "reload":
-            try:
-                self.config_manager.reload()
-                sender.send_message("§aConfig reloaded.")
-            except Exception as e:
-                sender.send_message(f"§cFailed to reload config: {e}")
-            return True
-
-        sender.send_message(f"§cUnknown subcommand: {sub}")
-        return True
