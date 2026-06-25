@@ -124,30 +124,39 @@ class ProtectionService:
     ) -> Tuple[bool, Optional[str]]:
         if is_op:
             return True, None
+
         claim = self._get_claim(victim_x, victim_z, dimension)
         if not claim:
             return True, None
+
+        victim_is_member = self._is_allowed_in_claim(claim, victim_xuid) if victim_xuid else False
         if is_pvp:
             attacker_is_member = self._is_allowed_in_claim(claim, attacker_xuid)
-            victim_is_member = self._is_allowed_in_claim(claim, victim_xuid)
+            victim_is_member = self._is_allowed_in_claim(claim, victim_xuid) if victim_xuid else False
+
             if attacker_is_member and victim_is_member:
                 if claim.permissions.get("allow_pvp", False):
                     return True, None
                 return False, f"PvP between members is disabled in {claim.name}"
+
             if not self.is_protection_enabled("protect_pvp"):
                 return True, None
             if attacker_is_member:
                 return True, None
-            if claim.permissions.get("allow_pvp", False):
-                return True, None
             return False, f"PvP is disabled in {claim.name}"
+
         if not self.is_protection_enabled("protect_passive_mobs"):
             return True, None
-        if self._is_allowed_in_claim(claim, attacker_xuid):
-            return True, None
-        if victim_xuid and not self._is_allowed_in_claim(claim, victim_xuid):
-            return True, None
-        return False, None
+
+        if attacker_xuid != 0:
+            attacker_is_member = self._is_allowed_in_claim(claim, attacker_xuid)
+            if attacker_is_member:
+                return True, None
+            return False, f"Cannot attack entities in {claim.name}"
+
+        if victim_is_member:
+            return False, None
+        return True, None
 
     def can_use_explosives(self, x: int, z: int, dimension: str = "overworld") -> bool:
         return self._is_env_action_allowed("protect_explosions", x, z, dimension)

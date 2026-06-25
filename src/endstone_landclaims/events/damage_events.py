@@ -20,6 +20,10 @@ class DamageEventHandler:
 
         is_player_attacker = isinstance(attacker, Player)
         is_player_victim = isinstance(victim, Player)
+
+        if not is_player_attacker and not is_player_victim:
+            return
+
         can_damage, reason = self.protection.can_damage_entity(
             int(victim.location.x),
             int(victim.location.z),

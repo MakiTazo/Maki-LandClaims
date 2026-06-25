@@ -152,7 +152,7 @@ class SettingsHandler(BaseHandler):
         form = ModalForm(
             title="Claim Permissions",
             controls=[
-                Toggle("Allow PvP", default_value=claim.permissions.get("allow_pvp", False)),
+                Toggle("Allow PvP between Members", default_value=claim.permissions.get("allow_pvp", False)),
             ],
             submit_button="Save",
             on_submit=on_submit,
